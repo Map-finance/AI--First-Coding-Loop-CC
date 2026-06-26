@@ -11,7 +11,7 @@
 
 ### 1.1 目标
 - 以 AIFCL 为基座，扩展并裁剪出一套 5 人团队可直接落地的 AI 开发协作流程。
-- 覆盖端到端：需求 → 任务拆解/分配 → AI 辅助开发（强制规范）→ 本地自检 → PR → AI 自动评审 → 架构师人工评审 → 合并 → 自动部署 → 测试任务自动生成 → QA 执行 → 测试 agent 审核报告 → 回测闭环。
+- 覆盖端到端：需求 → 任务拆解/分配 → AI 辅助开发（强制规范）→ 本地自检 → PR → AI 自动评审 → CTO人工评审 → 合并 → 自动部署 → 测试任务自动生成 → QA 执行 → 测试 agent 审核报告 → 回测闭环。
 - 规范"严格执行"的最终保证来自机器门禁（CI + 评审 gate），而非 agent 自觉。
 - 跨项目共享文档与接口契约，提高对接效率。
 
@@ -100,9 +100,9 @@ team-ops/
 
 | 人 / 角色 | 使用的 agent / skill | 关键约束 |
 |---|---|---|
-| 架构师 / PM（你） | `architect-task-writer` skill + 新增 `task-splitter` | 制定 + 多层拆解每日任务，产出草稿待确认 |
+| CTO / PM（你） | `architect-task-writer` skill + 新增 `task-splitter` | 制定 + 多层拆解每日任务，产出草稿待确认 |
 | 前端 / 后端同事 | `implementer`（写码，强制自带测试 + 输出文档）+ `checker`（本地自检） | maker/checker 分离 |
-| 架构师（评审） | `verifier-quality` / `verifier-security` / `verifier-performance` / `verifier-dependency` + 人工 review task | 四趟 AI 评审 + 架构师人工评审 |
+| CTO（评审） | `verifier-quality` / `verifier-security` / `verifier-performance` / `verifier-dependency` + 人工 review task | 四趟 AI 评审 + CTO人工评审 |
 | 测试同事 | 新增 `qa-generator`（生成用例）+ `qa-reviewer`（审报告） | 测试闭环 |
 
 > 5 人团队的项目级/子服务级责任归属用 CODEOWNERS + `ownership.md` 固化（相对静态）；每日任务才是动态拆解。
@@ -127,11 +127,11 @@ team-ops/
 提交 PR
  │ 触发四趟 AI 评审（quality/security/performance/dependency）→ ai-review-gate
  │ 触发 CI 门禁（lint/类型/SAST/覆盖率/契约类型/bundle）→ ci-gate
- │ 自动建 review 任务 issue 指派架构师
+ │ 自动建 review 任务 issue 指派CTO
  ▼
-架构师领取 review task → 按标准评审 → 批准
+CTO领取 review task → 按标准评审 → 批准
  ▼
-两个 gate 全绿 + 架构师批准 → 合并 main
+两个 gate 全绿 + CTO批准 → 合并 main
  ▼
 自动部署（deploy.yml 六阶段）
  │ qa-generator：读本次 diff → 生成测试用例 + 测试流程 + 验收标准
@@ -171,7 +171,7 @@ qa-reviewer 审核报告（覆盖全部验收点？有证据？）
 | `feature` | 功能开发 | 拆解产出 | PR `Closes` |
 | `bug` | bug 修复 | 人 / 自愈环 triage | 修复 PR 合并 |
 | `qa-task` | 测试任务 | gen_test_tasks（合并后） | qa-reviewer 审核 PASS |
-| `review` | 架构师评审任务 | PR 打开时自动建 | 架构师批准 |
+| `review` | CTO评审任务 | PR 打开时自动建 | CTO批准 |
 
 `daily-task` 模板强制字段示例：责任人、所属子服务、验收标准、关联文档、预计工时、依赖项。
 
@@ -258,7 +258,7 @@ qa-reviewer 审核报告（覆盖全部验收点？有证据？）
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | 第 0 周：地基 | 各代码仓初始化 + install.sh 铺 AIFCL + docs-repo + submodule + CLAUDE.md 宪法 + 两个 gate 设 required | 空 PR 跑通门禁 |
-| 第 1 周：开发侧 | 规范 skill + 四趟评审 + 架构师 review task + 文档强制检查 + ensure_skills | 真功能走完 开发→自检→PR→评审→架构师批→合并→部署 |
+| 第 1 周：开发侧 | 规范 skill + 四趟评审 + CTO review task + 文档强制检查 + ensure_skills | 真功能走完 开发→自检→PR→评审→CTO批→合并→部署 |
 | 第 2 周：任务侧 | task-splitter + 组织级 Projects + Issue 模板 + 每日拆解/进度 + 人工确认门 | 下发任务能自动拆解建单、看板可视 |
 | 第 3 周：测试侧 | gen_test_tasks + qa_review + qa-handoff workflow + 测试报告模板 | 合并后自动生成测试任务，QA 领取→报告→agent 审核→回测 |
 | 持续：防失控 | daily-health（进度 + token 账单 + 反认知投降三指标） | 团队不退化为"只按 approve" |
