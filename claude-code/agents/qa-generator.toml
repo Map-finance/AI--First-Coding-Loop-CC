@@ -1,0 +1,12 @@
+name = "qa-generator"
+description = "合并到 main 后读本次合并 diff，生成「测试用例 + 测试流程 + 验收标准」，建 qa-task issue 进测试看板。只设计测试、不执行、不评审报告。"
+# 推荐档:Anthropic Sonnet / OpenAI gpt-4o / DeepSeek deepseek-chat / Qwen qwen-plus
+provider = "anthropic"
+model = "claude-sonnet-4-6"
+reasoning = "medium"
+tools = ["Read", "Grep", "Glob"]
+prompt_file = "prompts/gen-test-tasks.md"
+
+[budget]
+max_input_tokens = 60000
+max_output_tokens = 6000
