@@ -31,7 +31,7 @@ done
 # superpowers：用户级或项目级任一存在即视为已装
 say "检查 superpowers"
 if [ -d "$HOME/.claude/skills/superpowers" ] || [ -d "$TARGET/.claude/skills/superpowers" ] \
-   || [ -d "$HOME/.claude/plugins/superpowers" ]; then
+   || [ -d "$HOME/.claude/plugins/superpowers" ] || [ -d "$TARGET/.claude/plugins/superpowers" ]; then
   ok "superpowers: 已存在，跳过"
 else
   echo "superpowers: 缺失"

@@ -13,4 +13,16 @@ mkdir -p "$TMP/.claude/skills/testing-standards" "$TMP/.claude/skills/sql-optimi
 OUT="$(DRY_RUN=1 bash "$SCRIPT_DIR/ensure_skills.sh" "$TMP" 2>&1)"
 echo "$OUT" | grep -q 'superpowers: 缺失' || { echo "FAIL: 未检测到 superpowers 缺失"; exit 1; }
 echo "$OUT" | grep -q 'secure-coding: 已存在' || { echo "FAIL: 未跳过已存在 skill"; exit 1; }
+
+# 用例 2：项目级 plugins 路径预置 superpowers，应视为已存在（不应再报缺失）
+TMP2="$(mktemp -d)"
+trap 'rm -rf "$TMP" "$TMP2"' EXIT
+mkdir -p "$TMP2/.claude/plugins/superpowers"
+# 隔离 HOME，避免真实用户环境的 superpowers 干扰本用例
+FAKE_HOME="$(mktemp -d)"
+trap 'rm -rf "$TMP" "$TMP2" "$FAKE_HOME"' EXIT
+OUT2="$(HOME="$FAKE_HOME" DRY_RUN=1 bash "$SCRIPT_DIR/ensure_skills.sh" "$TMP2" 2>&1)"
+echo "$OUT2" | grep -q 'superpowers: 已存在' || { echo "FAIL: 项目级 plugins superpowers 未识别为已存在"; exit 1; }
+echo "$OUT2" | grep -q 'superpowers: 缺失' && { echo "FAIL: 项目级 plugins superpowers 仍误报缺失"; exit 1; }
+
 echo "PASS"
