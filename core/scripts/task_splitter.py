@@ -2,14 +2,15 @@
 """每日任务拆解 — 三层模型第 ③ 层(每日)。
 
 读"任务源"(架构师写的结构化任务文本)+ ownership.md(责任人归属),
-用 ModelAdapter 按 prompts/daily-task-split.md 拆解,产出两样东西:
+用纯确定性机器拆解(parse_source 解析结构化字段),产出两样东西:
   1. 当日任务计划文档(markdown,归档到 team-ops/daily/<date>.md)
   2. 待建 issue 清单草稿(JSON)
 
+不调模型:拆解完全确定、零副作用。prompts/daily-task-split.md 保留供人/未来使用。
 人工确认门(本脚本的硬约束):只产草稿,绝不创建 issue、绝不触碰 Tracker。
 建 issue 是 create_issues_from_draft.py 在人确认草稿后才做的事。
 
-本地试跑(无模型 key → 机器回退拆解,零副作用):
+本地试跑(确定性拆解,零副作用):
     python scripts/task_splitter.py --source tasks-source.md --date 2026-06-27 \
         --plan-out team-ops/daily/2026-06-27.md --draft-out draft.json
 """
@@ -20,10 +21,6 @@ import json
 import re
 import sys
 from pathlib import Path
-
-from _adapters import ModelAdapter
-
-PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "daily-task-split.md"
 
 
 def parse_source(text: str) -> list[dict]:
@@ -115,25 +112,11 @@ def build_plan_doc(date: str, tasks: list[dict]) -> str:
     )
 
 
-def _ai_refine(prompt_template: str, source: str) -> str:
-    return ModelAdapter.summarize(
-        prompt_template + "\n\n=== 任务源 ===\n" + source,
-        loop="task-split", role="task-splitter",
-    )
-
-
 def run(*, source: str, date: str, plan_out: str, draft_out: str,
         ownership: str | None = None) -> int:
+    # 纯确定性机器拆解:parse_source 即唯一事实来源,零模型调用、零副作用。
     src_text = Path(source).read_text(encoding="utf-8")
     tasks = parse_source(src_text)
-
-    # 模型可用时,让模型补全/校准字段(摘要型,不改变"只产草稿"约束)。
-    # 模型未配置/失败 → summarize 返回 [模型...] 前缀字符串,直接走机器拆解结果。
-    if PROMPT_PATH.exists():
-        ai = _ai_refine(PROMPT_PATH.read_text(encoding="utf-8"), src_text)
-        if not ai.startswith("[模型"):
-            # 模型产出附加进计划文档作为"AI 建议",不覆盖确定性结构(保守)
-            pass  # AI 文本仅供人审,机器结构仍以 parse_source 为准
 
     plan_doc_rel = plan_out
     draft = build_draft(date, plan_doc_rel, tasks)
