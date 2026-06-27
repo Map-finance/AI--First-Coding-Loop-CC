@@ -19,6 +19,17 @@
 | `api-endpoint-creator` | 加新 HTTP 端点的标准做法 | implementer agent |
 | `triage-severity-scorer` | 九维严重度打分规则 | triage_engine.py 自动 |
 | `weekly-comprehension-check` | 架构师每周自检——反认知投降护栏 | **人**(不是 agent) |
+| `sql-optimization` | 查询优化（索引/N+1/全表/分页） | implementer / review |
+| `secure-coding` | 应用级安全判断 | implementer / review |
+| `performance-review` | 性能+韧性+可观测性 | implementer / review |
+| `financial-numerics` | 金额/数值安全（金融产品） | implementer |
+| `naming-convention` | 命名语义 | implementer / review |
+| `commenting` | 注释解释 why | implementer / review |
+| `design-patterns` | 设计模式取舍/防过度设计 | implementer / review |
+| `clean-code` | 整洁度/职责单一/去重 | implementer / review |
+| `testing-standards` | 测试覆盖与质量 | implementer / review |
+| `api-doc-output` | 改接口同步产出 docs/api | implementer |
+| `data-model-output` | 改数据模型同步产出 docs/data-model | implementer |
 
 ## SKILL.md 写法约定
 
