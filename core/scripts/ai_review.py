@@ -10,7 +10,8 @@
 用法(在 GitHub Actions 里):
   python3 scripts/ai_review.py --pass quality      # 第 1 趟:质量
   python3 scripts/ai_review.py --pass security     # 第 2 趟:安全
-  python3 scripts/ai_review.py --pass dependency   # 第 3 趟:依赖
+  python3 scripts/ai_review.py --pass performance  # 第 3 趟:性能/韧性/可观测
+  python3 scripts/ai_review.py --pass dependency   # 第 4 趟:依赖
 
 退出码:
   0 = PASS,1 = BLOCK(让 ci-gate 红),2 = 配置错误
@@ -36,16 +37,18 @@ from _adapters import ModelAdapter, record_token_usage
 # 工作流可设 AIFCL_PROMPTS_DIR=_aifcl/core/prompts 指过去。默认仍是 ./prompts。
 _PROMPTS_DIR = os.getenv("AIFCL_PROMPTS_DIR", "prompts")
 PROMPTS = {
-    "quality":    f"{_PROMPTS_DIR}/review-quality.md",
-    "security":   f"{_PROMPTS_DIR}/review-security.md",
-    "dependency": f"{_PROMPTS_DIR}/review-dependency.md",
+    "quality":     f"{_PROMPTS_DIR}/review-quality.md",
+    "security":    f"{_PROMPTS_DIR}/review-security.md",
+    "performance": f"{_PROMPTS_DIR}/review-performance.md",
+    "dependency":  f"{_PROMPTS_DIR}/review-dependency.md",
 }
 
-# 三趟与 sub-agent 的对应关系(影响 LLM_MODEL_<ROLE> 的覆盖键)
+# 四趟与 sub-agent 的对应关系(影响 LLM_MODEL_<ROLE> 的覆盖键)
 PASS_ROLE = {
-    "quality":    "verifier-quality",
-    "security":   "verifier-security",
-    "dependency": "verifier-dependency",
+    "quality":     "verifier-quality",
+    "security":    "verifier-security",
+    "performance": "verifier-performance",
+    "dependency":  "verifier-dependency",
 }
 
 
