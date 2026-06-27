@@ -16,6 +16,11 @@ def test_parse_verdict_pass():
     assert q.parse_verdict("看起来覆盖完整\nVERDICT: PASS") == "PASS"
 
 
+def test_parse_verdict_ambiguous_line_resolves_block():
+    # 一行同时含 PASS 与 BLOCK：歧义保守取更严的 BLOCK
+    assert q.parse_verdict("VERDICT: PASS but there is a BLOCK-level gap") == "BLOCK"
+
+
 def test_parse_verdict_defaults_block_when_missing():
     # 报告审核场景下，模型没明确判定时保守视为 BLOCK（与 ai_review 的保守 PASS 相反，
     # 因为这里"放过未审核的报告"风险更高）

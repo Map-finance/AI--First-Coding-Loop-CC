@@ -54,10 +54,11 @@ def parse_verdict(text: str) -> str:
     for line in reversed(text.splitlines()):
         s = line.strip().upper()
         if s.startswith("VERDICT:"):
-            if "PASS" in s:
-                return "PASS"
+            # 歧义行（同含 BLOCK 与 PASS）保守取更严的 BLOCK，与缺判定默认一致
             if "BLOCK" in s:
                 return "BLOCK"
+            if "PASS" in s:
+                return "PASS"
     return "BLOCK"
 
 
