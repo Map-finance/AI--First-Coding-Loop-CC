@@ -97,6 +97,16 @@ safe_cp "$SOURCE_DIR/core/state/known-flakes.txt" "$TARGET/${PREFIX}state/known-
 mkdir -p "$TARGET/${PREFIX}state/tasks" && touch "$TARGET/${PREFIX}state/tasks/.gitkeep"
 ok "+ state/tasks/.gitkeep"
 
+# === Issue Forms → 目标代码仓 .github/ISSUE_TEMPLATE/ ===
+# 这些是任务编排的结构化 issue 模板(daily-task/feature/bug/qa-task/review)。
+# 装到代码仓而非管理仓:GitHub Closes #N 只能关同仓 issue,issue 必须落代码仓才能自动关单。
+if [ -d "$SOURCE_DIR/templates/team-ops/issue-templates" ]; then
+  say "issue-templates → $TARGET/${PREFIX}.github/ISSUE_TEMPLATE/"
+  for f in "$SOURCE_DIR"/templates/team-ops/issue-templates/*.yml; do
+    safe_cp "$f" "$TARGET/${PREFIX}.github/ISSUE_TEMPLATE/$(basename "$f")"
+  done
+fi
+
 # === claude-code(skills + agents)===
 if [ "$NO_SKILLS" = "0" ]; then
   say "claude-code/ → $TARGET/$CC_DIR/"
