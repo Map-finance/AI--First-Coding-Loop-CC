@@ -8,8 +8,14 @@ tools = ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 max_iterations = 25
 
 prompt_skill = "architect-task-writer"   # 默认配合的 skill
-required_skills = ["feature-flag-setup"] # 任何新功能强制走这个
-optional_skills = ["api-endpoint-creator"]
+# 任何改动都强制挂载的规范底线（开发期"做对"）
+required_skills = ["feature-flag-setup", "secure-coding", "clean-code", "testing-standards"]
+# 按改动内容由 description 自动触发：涉及 SQL→sql-optimization、外部调用→performance-review、
+# 金额→financial-numerics、接口→api-doc-output、数据模型→data-model-output 等
+optional_skills = [
+  "api-endpoint-creator", "sql-optimization", "performance-review", "financial-numerics",
+  "naming-convention", "commenting", "design-patterns", "api-doc-output", "data-model-output",
+]
 
 [budget]
 max_input_tokens = 80000
