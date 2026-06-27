@@ -1,0 +1,12 @@
+name = "verifier-performance"
+description = "PR 评审第 3 趟:性能、韧性(超时/重试/熔断/幂等/限流)、可观测性(结构化日志/埋点)。团队真实痛点从严,只对真正影响稳定性/性能的问题给 BLOCK。"
+# 推荐档:Anthropic Sonnet / OpenAI gpt-4o / DeepSeek deepseek-chat / Qwen qwen-plus
+provider = "anthropic"
+model = "claude-sonnet-4-6"
+reasoning = "medium"
+tools = ["Read", "Grep", "Glob"]
+prompt_file = "prompts/review-performance.md"
+
+[budget]
+max_input_tokens = 40000
+max_output_tokens = 4000
