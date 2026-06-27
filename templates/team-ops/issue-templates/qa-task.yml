@@ -1,0 +1,45 @@
+name: 测试任务 (qa-task)
+description: 合并后由 gen_test_tasks 生成的测试任务。关闭条件：qa-reviewer 审核报告 PASS。
+title: "[qa-task] "
+labels: ["qa-task"]
+body:
+  - type: input
+    id: tester
+    attributes:
+      label: 测试责任人
+    validations:
+      required: true
+  - type: input
+    id: subservice
+    attributes:
+      label: 被测子服务
+    validations:
+      required: true
+  - type: input
+    id: pr
+    attributes:
+      label: 关联 PR / 合并提交
+      description: 触发本测试任务的 PR 链接或 commit
+    validations:
+      required: true
+  - type: textarea
+    id: cases
+    attributes:
+      label: 测试用例
+      description: 由 qa-generator 读 diff 生成，逐条列出
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收点
+      description: 每条都要在报告里给出通过/不通过 + 证据
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: 测试报告（执行后回填）
+      description: 覆盖全部验收点；附证据（截图/日志/录屏）
+    validations:
+      required: false

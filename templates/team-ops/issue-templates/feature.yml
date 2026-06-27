@@ -1,0 +1,52 @@
+name: 功能开发 (feature)
+description: 功能开发任务。由拆解产出。关闭条件：实现 PR 通过 Closes 关键字自动关单。
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: input
+    id: owner
+    attributes:
+      label: 责任人
+    validations:
+      required: true
+  - type: input
+    id: subservice
+    attributes:
+      label: 所属子服务
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标与背景
+      description: 要让用户/系统能做到什么，为什么现在做
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围（In / Out of Scope）
+      description: 明确本次做什么、明确不做什么（防过度发挥）
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可测条目，含边界/错误路径/性能或安全要求
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: 关联文档
+      description: 需同步产出/更新的 api.md / data-model.md 等
+    validations:
+      required: true
+  - type: checkboxes
+    id: flag
+    attributes:
+      label: 特性开关
+      options:
+        - label: 本功能将藏在特性开关后（fail-safe 默认 false）
+          required: true
