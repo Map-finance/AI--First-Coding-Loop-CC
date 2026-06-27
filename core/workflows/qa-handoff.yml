@@ -1,0 +1,81 @@
+# =============================================================================
+# 测试交接 — 测试闭环 workflow（spec 第 6 节后半段）
+# -----------------------------------------------------------------------------
+# 1) push/merge 到 main → gen_test_tasks：读本次合并 diff 生成 qa-task issue。
+# 2) issue_comment（issue 带 qa-task 标签）→ qa_review：审核 QA 报告，
+#    PASS 关单、BLOCK 打回重测。
+#
+# 与 triage.yml 同源：setup-python + pip install scripts/requirements.txt +
+# 由 env 注入凭证 + run 脚本。建单 / 关单 / 留言走 gh CLI（GITHUB_TOKEN 自带）。
+# =============================================================================
+name: QA Handoff
+
+on:
+  push:
+    branches: [main]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write          # 建 qa-task / 关单 / 打回留言
+
+jobs:
+  # 合并后生成测试任务 -------------------------------------------------------
+  gen-test-tasks:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2          # 取 merge commit 的父提交以算 first-parent diff
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r scripts/requirements.txt
+      - name: Generate qa-task issue from merge diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MERGE_SHA: ${{ github.sha }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 scripts/gen_test_tasks.py --merge-sha "$MERGE_SHA"
+
+  # QA 提交报告后审核 --------------------------------------------------------
+  qa-review:
+    # 仅当评论发生在 issue（非 PR）且该 issue 带 qa-task 标签时
+    if: >
+      github.event_name == 'issue_comment' &&
+      !github.event.issue.pull_request &&
+      contains(toJSON(github.event.issue.labels.*.name), 'qa-task')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r scripts/requirements.txt
+      - name: Review QA report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        # 退出码 2 = 非报告评论（跳过），不应让 job 红，故吞掉 2
+        run: |
+          set +e
+          python3 scripts/qa_review.py
+          code=$?
+          if [ "$code" = "2" ]; then echo "非测试报告评论，跳过。"; exit 0; fi
+          exit $code
