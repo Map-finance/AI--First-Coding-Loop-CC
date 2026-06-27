@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '%s' '[skill-reminder] 按改动内容显式 Read 对应规范 skill：SQL→sql-optimization；外部调用/并发/日志→performance-review；用户输入/鉴权/密钥→secure-coding；金额/交易→financial-numerics；改接口→api-doc-output；改数据模型→data-model-output；新功能→feature-flag-setup；底线→clean-code + testing-standards。涉及才用，不涉及忽略。'"
+          }
+        ]
+      }
+    ]
+  }
+}
