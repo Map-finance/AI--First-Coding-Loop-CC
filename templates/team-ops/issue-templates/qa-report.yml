@@ -1,0 +1,59 @@
+# 测试报告 Issue Form —— QA 据此结构化提交测试结果。
+# 部署位置：team-ops 仓的 .github/ISSUE_TEMPLATE/qa-report.yml
+# 说明：日常 QA 报告优先直接在对应代码仓的 qa-task issue 下"评论"提交
+#       （首行 QA-REPORT，与 gen_test_tasks 内嵌模板一致，触发 qa_review 自动审核）；
+#       本 Issue Form 用于需要独立留痕 / 跨仓汇总时新开报告 issue。
+name: QA 测试报告
+description: 提交一个 qa-task 的测试执行结果，供 qa-reviewer 审核
+title: "QA-REPORT: <对应 qa-task 标题>"
+labels: ["qa-report"]
+body:
+  - type: input
+    id: qa_task_ref
+    attributes:
+      label: 关联 qa-task
+      description: 对应的 qa-task issue 编号或链接（含其标题里的 [merge:..] 标记）
+      placeholder: "#123 / org/svc#123"
+    validations:
+      required: true
+  - type: textarea
+    id: coverage
+    attributes:
+      label: 覆盖的验收点
+      description: 逐条对应 qa-task「验收标准」里的每个勾选项，写明结果
+      placeholder: |
+        - [x] 验收点1：重复提交两次只入账一次 —— 实测两次返回同一交易号
+        - [x] 验收点2：金额精度按最小单位 —— 实测无浮点误差
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 测试环境
+      description: dev/staging、版本/镜像 tag、数据准备情况
+      placeholder: "staging, image rel-2026.06.27-abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据
+      description: 截图链接 / 日志片段 / 接口响应 / 用例执行记录（每个通过点都要有）
+    validations:
+      required: true
+  - type: dropdown
+    id: conclusion
+    attributes:
+      label: 结论
+      options:
+        - 通过
+        - 不通过
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注 / 不通过原因
+      description: 若不通过，说明缺陷与复现步骤
+    validations:
+      required: false
