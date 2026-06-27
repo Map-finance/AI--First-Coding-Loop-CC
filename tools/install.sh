@@ -117,6 +117,12 @@ if [ "$NO_SKILLS" = "0" ]; then
   else
     skip "CLAUDE.md 已存在,跳过(请手动 merge claude-code/CLAUDE.md.template 的新增内容)"
   fi
+  # .claude/settings.json:仅在目标仓没有时装(含 skill-reminder hook)
+  if [ ! -f "$TARGET/$CC_DIR/settings.json" ]; then
+    safe_cp "$SOURCE_DIR/claude-code/settings.json.template" "$TARGET/$CC_DIR/settings.json"
+  else
+    skip "$CC_DIR/settings.json 已存在,跳过(请手动 merge hook)"
+  fi
 fi
 
 # === .gitignore 追加(若有需要)===
@@ -134,6 +140,11 @@ for line in "${NEEDED[@]}"; do
     ok "+ .gitignore: $line"
   fi
 done
+
+# === 确保必备 skill 就位 ===
+if [ "$NO_SKILLS" = "0" ]; then
+  bash "$SCRIPT_DIR/ensure_skills.sh" "$TARGET" || skip "ensure_skills 有告警,请查看上方输出"
+fi
 
 cat <<EOF
 
