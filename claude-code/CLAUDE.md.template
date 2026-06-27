@@ -76,6 +76,17 @@ scripts/     # 自动化脚本          [health_report、triage_engine、verify_
 项目知识按域拆分。agent 看到 `description` 与 `when_to_use` 自动加载相关 skill。
 新增 skill:在 `skills/` 下建目录,登记到 `skills/README.md`。
 
+#### 规范 skill 强制加载（开发与评审的共同底线）
+任何 agent 在以下情形**必须先 Read 对应 skill 再动手**（不是"自觉"，是硬规则）：
+- 涉及 SQL/ORM/迁移 → `sql-optimization`
+- 外部调用/并发/缓存/日志/监控 → `performance-review`
+- 处理用户输入/鉴权/密钥/序列化 → `secure-coding`
+- 金额/价格/余额/交易 → `financial-numerics`
+- 改接口 → `api-doc-output`；改数据模型 → `data-model-output`
+- 任何改动的底线：`clean-code` + `testing-standards` + 新功能 `feature-flag-setup`
+
+这些 skill 同时被 PR 的 AI 评审引用（见 `.github/workflows/ai-review.yml`）。开发期漏掉的，评审期会拦。
+
 ### Sub-agents(`agents/<name>.toml`)
 角色化的 agent + 模型分层:`explorer`(Haiku)/`implementer`(Sonnet)/三类 `verifier`(分层)/
 `triage-scorer`(Sonnet)/`checker`(Sonnet)。**写代码的 agent 不能是判断 done 的 agent**。
