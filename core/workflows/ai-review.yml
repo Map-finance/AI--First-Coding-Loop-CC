@@ -11,7 +11,7 @@
 # 三趟仍并行,门禁仍强制,但 v2.1 起完全不依赖 anthropics/claude-code-action。
 # 任何 OpenAI 兼容协议的厂商 + Anthropic 原生协议都开箱可用。
 # =============================================================================
-name: AI Review (3 passes, multi-provider)
+name: AI Review (4 passes, multi-provider)
 
 on:
   pull_request:
@@ -80,8 +80,22 @@ jobs:
           LLM_MODEL_VERIFIER_DEPENDENCY: ${{ vars.LLM_MODEL_VERIFIER_DEPENDENCY }}
         run: python3 scripts/ai_review.py --pass dependency
 
+  performance:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install -r scripts/requirements.txt
+      - name: Pass 3 — Performance / Resilience / Observability
+        env:
+          LLM_MODEL_VERIFIER_PERFORMANCE: ${{ vars.LLM_MODEL_VERIFIER_PERFORMANCE }}
+        run: python3 scripts/ai_review.py --pass performance
+
   ai-review-gate:
-    needs: [quality, security, dependency]
+    needs: [quality, security, performance, dependency]
     if: always()
     runs-on: ubuntu-latest
     steps:
