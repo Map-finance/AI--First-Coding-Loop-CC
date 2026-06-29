@@ -7,7 +7,7 @@ when_NOT_to_use: 不涉及持久层结构的改动。
 
 # Skill: 数据定义产出
 
-改数据模型必须同步更新 `docs/<backend>/<svc>/data-model.md`。
+改数据模型必须同步更新 `docs/<project>/<backend>/<svc>/data-model.md`。
 
 ## 每处变更需记录
 1. 表用途 + 字段（名/类型/可空/默认/含义）

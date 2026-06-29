@@ -25,6 +25,13 @@ docs/                 # ← git submodule,指向共享 docs-repo(总体架构/�
 .github/              # 本仓 CI/CD 与 AI 评审工作流
 scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 ```
+> docs-repo(经 docs/ submodule 共享)按**多项目**组织,不要平铺到根:
+>   docs-repo/
+>   ├── contracts/                      # 跨项目共享接口契约
+>   ├── <project>/                      # 每个项目一个顶层目录
+>   │   ├── architecture.md
+>   │   ├── backend/<svc>/{design,data-model,api}.md
+>   │   └── frontend/<module>/{design,api}.md
 > 跨前后端/跨服务共享的接口、类型、契约放在 **docs-repo 的 `contracts/`**,本仓经 `docs/` submodule 引用,**不要在本仓复制**。
 
 ## 本地开发(agent 必须能复现这些命令)

@@ -7,7 +7,7 @@ when_NOT_to_use: 仅内部函数重构、不影响对外契约。
 
 # Skill: 接口文档产出
 
-改接口必须同步更新 `docs/<backend|frontend>/<svc>/api.md`，否则 CI 拦截。
+改接口必须同步更新 `docs/<project>/<backend|frontend>/<svc>/api.md`，否则 CI 拦截。
 
 ## 每个接口需记录
 1. 路径 + 方法 + 简述
