@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# pre-push: 拦截直接 push 到受保护分支,强制走 分支 + PR + 门禁
+protected="main master"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  branch="${remote_ref#refs/heads/}"
+  for p in $protected; do
+    if [ "$branch" = "$p" ]; then
+      echo "✗ 禁止直接 push 到 '$p'。请走:新建分支 → 开 PR → 过门禁(ci-gate/ai-review-gate)→ 合并。" >&2
+      echo "  例:git switch -c feat/<name> && git push -u origin feat/<name>" >&2
+      exit 1
+    fi
+  done
+done
+exit 0
