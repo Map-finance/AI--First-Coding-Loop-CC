@@ -161,7 +161,8 @@ cat <<EOF
   1. 编辑 CLAUDE.md 把 [占位] 换成项目真实信息
   2. 编辑 ${PREFIX}.github/workflows/ci.yml 注释掉用不到的语言 job
   3. 在 GitHub Repo Settings 配 LLM_PROVIDER + LLM_API_KEY(详见 docs/多模型适配.md)
-  4. 跑 bash tools/verify.sh 做 5 项 sanity
-  5. 推到分支 + 开 draft PR,自己 review 后再合 main
+  4. 给本仓(及 docs-repo)开分支保护:bash tools/setup-branch-protection.sh <owner/repo>
+  5. 跑 bash tools/verify.sh 做 5 项 sanity
+  6. 推到分支 + 开 draft PR,自己 review 后再合 main
 ============================================================
 EOF
