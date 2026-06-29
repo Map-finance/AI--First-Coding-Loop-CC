@@ -32,6 +32,25 @@
 
 ---
 
+## 2.5 与管理端 deepdog-BIOS 的职责边界（架构演进，2026-06）
+
+落地中确认:团队已有生产级管理端 **deepdog-BIOS**(AI workforce 控制塔:Go + Next.js + PostgreSQL,含 issue 中心、agent_task_queue 派发、daemon 客户端连接、GitHub webhook、verification 网关、workloop 人机协同)。因此本 harness 的职责**收缩为客户端执行侧**,与管理端明确分工,避免两套体系打架。
+
+**管理端 deepdog-BIOS 负责**:项目蓝图 · 任务拆解 · 进度/ETA · 任务派发 · agent 客户端管理 · **issue 中心(单一事实源)** · GitHub PR 同步 · 验证网关(CI 信号 + 人工签字 + autonomy redispatch 回测) · 人机协同监管。
+
+**本 harness(客户端)负责**:CLAUDE.md 规范 · 规范 skill 体系 · **四趟 AI 评审(CI 门禁)** · 特性开关 · 自愈环 · 文档产出规范。
+
+**已移除(让位 deepdog),不再是 harness 的实现**:
+- **team-ops / 任务拆解**:`task_splitter`、`create_issues_from_draft`、`_gh_tracker`、5 类 Issue Form、`team-ops` 模板 → 由 deepdog 的 issue/agent_task_queue/group 接管。
+- **测试闭环编排**:`gen_test_tasks`、`qa_review`、`qa-handoff` workflow、qa agent → 由 deepdog 的 verification 网关(check_suite webhook + POST /verify 人工签字 + autonomy 自动 redispatch)接管。
+- 这三块的拆解/测试生成/报告审核 **prompt 已抽存到 [docs/assets-for-deepdog/](../../assets-for-deepdog/)**,供 deepdog 实现"AI 任务拆解 / 自动生成验收标准 / AI 预审测试报告"(deepdog 当前缺这三项)时复用。
+
+**两端对接**:deepdog 派 issue(daemon WS 直下发 / 人工指派)→ 客户端 agent 在代码仓按 harness 规范开发 → PR → CI 跑四趟评审 → `check_suite` webhook → deepdog verification 网关 → workloop 推进 issue。
+
+> **本节为职责边界的权威说明。** 下文 §6 流程后半(测试任务生成/QA)、§7 任务拆解三层模型、§8 Issue 类型体系、§13 人工确认门中涉及"任务拆解 / 建 issue / 测试闭环"的部分,均**以本节为准**(已让位 deepdog);harness 侧实际保留的是 §9 规范体系、§10 四趟评审、§11–12 skill 加载/安装、§14 文档产出。
+
+---
+
 ## 3. 架构决策
 
 ### 3.1 仓库拓扑：多仓 + 独立共享 docs 仓
