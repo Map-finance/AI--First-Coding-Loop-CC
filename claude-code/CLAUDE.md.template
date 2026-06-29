@@ -1,36 +1,38 @@
-# CLAUDE.md — monorepo 根上下文(agent 的常驻地图,v2.1)
+# CLAUDE.md — 本代码仓的 agent 常驻上下文(v2.1)
 
 > v2 升级:把项目知识从单文件拆成 `skills/` 体系;sub-agent 角色化;新增 `state/` 外置记忆。
 > **v2.1 升级**:模型无关——支持 Anthropic / OpenAI / DeepSeek / Qwen / Kimi / GLM 等任意厂商。
 > 切厂商只需 2 个 env:`LLM_PROVIDER` + `LLM_API_KEY`。详见 `docs/多模型适配.md`。
 > 任何 agent 进入项目后,**先读本文件,再按需 Read 相关 skill**。
 
-> 这是 harness 的核心文件之一。放在 monorepo 根目录。任何 agent(评审、实现、triage)
-> 都会先读它。**目标:一个全新 agent 只读本文件 + 仓库,就能独立完成一个跨服务改动
-> 并让集成测试通过。** 把方括号占位换成你项目的真实内容,并随架构演进持续更新。
+> 这是 harness 的核心文件之一。**多仓架构下每个代码仓各有一份 CLAUDE.md**,反映本仓真实
+> 结构与命令;跨仓共享的文档/接口/契约在独立的 **docs-repo**(经 git submodule 挂到 `docs/`)。
+> 任何 agent(评审、实现、triage)进入本仓都先读它。**目标:一个全新 agent 只读本文件 + 本仓,
+> 就能独立完成一个改动并让测试通过。** 把方括号占位换成本仓真实内容,随架构演进持续更新。
 
 ---
 
 ## 这个仓库是什么
-[一句话:产品是什么、这个 monorepo 包含哪些部分。]
+[一句话:本仓是什么服务/应用、用什么技术栈、在产品里的角色;在多仓体系中与哪些仓对接(经 docs-repo/contracts 共享契约)。]
 
 ## 目录结构(职责地图)
+> 这是**本代码仓**的结构,按本仓真实情况填(不同项目/语言不同)。
 ```
-apps/        # 可部署的前端/应用    [web: Next.js;mobile: ...]
-services/    # 后端服务            [billing: Go;api: Node;ml: Python]
-packages/    # 共享库              [contracts: 跨服务类型/契约;ui;config]
-ops/         # 部署/运维脚本        [deploy.sh、rollback.sh、build_and_push.sh ...]
-scripts/     # 自动化脚本          [health_report、triage_engine、verify_triage ...]
-.github/     # CI/CD 与 AI 评审工作流
+[本仓主源码,按实际填,例如:]
+src/ | app/ | cmd/    # 本仓主源码入口
+internal/ | pkg/      # 本仓内部模块
+docs/                 # ← git submodule,指向共享 docs-repo(总体架构/各服务设计/接口/数据定义)
+.github/              # 本仓 CI/CD 与 AI 评审工作流
+scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 ```
-> 跨服务的接口/类型必须放在 `packages/contracts`,不要在各服务里各自复制。
+> 跨前后端/跨服务共享的接口、类型、契约放在 **docs-repo 的 `contracts/`**,本仓经 `docs/` submodule 引用,**不要在本仓复制**。
 
 ## 本地开发(agent 必须能复现这些命令)
-- 安装依赖:`[make bootstrap / pnpm install && go mod download && pip install -r ...]`
-- **一条命令起全栈**:`make dev`(底层:`docker compose -f docker-compose.dev.yml up`)
-- **一条命令跑集成测试**:`make test-integration`
-- 单测:`make test-unit`;E2E:`make test-e2e`
-- 类型检查/lint:`make check`
+> ⚠️ 下面命令按**本仓技术栈**填(不同语言完全不同),务必填成本仓真实可跑的命令——CI 门禁与 AI 评审都依赖"能一键跑测试"。
+- 安装依赖:`[按本仓填,如 pnpm install / go mod download / pip install -r requirements.txt / cargo fetch]`
+- 起服务:`[如 make dev / npm run dev / docker compose up / go run ./cmd/...]`
+- 跑测试:`[如 make test / npm test / go test ./... / pytest]`(关键路径需有集成/E2E 测试)
+- 类型检查/lint:`[如 make check / npm run lint / golangci-lint run / ruff check]`
 
 ## 编码规范
 - 语言版本:[Node 20 / Go 1.22 / Python 3.12]
@@ -58,9 +60,9 @@ scripts/     # 自动化脚本          [health_report、triage_engine、verify_
 ## 给实现 agent 的工作约定
 1. **先出计划与风险,再写码。** 列出你识别到的失败模式、安全边界、可能的技术债。
 2. 不扩大范围;任务模板(`prompts/architect-task.md`)第 3 节之外的需求,先问架构师。
-3. 自带测试,确保 `make test-integration` 通过。
+3. 自带测试,确保本仓的集成/测试命令(见"本地开发"节)通过。
 4. 开 PR 时在描述里列出权衡点,并指出需要人类重点看的"战略风险"。
-5. 复用 `packages/contracts`,不要在服务间复制类型。
+5. 复用 docs-repo 的 `contracts/`(经 `docs/` submodule),不要在仓内复制跨服务类型。
 
 ## 给 triage agent 的工作约定
 - 错误来源:可观测后端(CloudWatch / Prometheus 等)+ Sentry。
