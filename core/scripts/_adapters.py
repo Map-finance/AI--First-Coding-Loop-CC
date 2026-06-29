@@ -19,7 +19,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
@@ -318,9 +317,6 @@ class TrackerAdapter:
         tracker = os.getenv("TRACKER", "github-dryrun").lower()
         if tracker == "linear":
             return _LinearTracker()
-        if tracker == "github-cli":
-            from _gh_tracker import _GhCliTracker
-            return _GhCliTracker()
         # Jira / 其他可按相同接口扩展
         return _DryRunTracker()
 
@@ -337,12 +333,6 @@ class TrackerAdapter:
         raise NotImplementedError
 
     def close_issue(self, issue_id: str, comment: str) -> None:
-        raise NotImplementedError
-
-    def create_issue_in_repo(self, *, repo: str, title: str, body: str,
-                             labels: list[str] | None = None,
-                             assignee: str | None = None) -> str:
-        """在指定代码仓建一个结构化 issue,返回 issue URL。供任务拆解人确认门后置执行。"""
         raise NotImplementedError
 
 
@@ -403,11 +393,6 @@ class _DryRunTracker(TrackerAdapter):
         print(f"[DRY-RUN] REOPEN ticket {issue_id} (regression detected)")
     def close_issue(self, issue_id, comment):
         print(f"[DRY-RUN] CLOSE ticket {issue_id}: {comment}")
-    def create_issue_in_repo(self, *, repo, title, body, labels=None, assignee=None):
-        print(f"[DRY-RUN] CREATE issue in {repo}  labels={labels} assignee={assignee}")
-        print(f"          title: {title}")
-        print(_indent(body))
-        return f"dry-run://{repo}/{abs(hash(title)) % 100000}"
 
 
 # =============================================================================
