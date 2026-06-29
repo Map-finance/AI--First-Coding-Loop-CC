@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""AI 生成发布说明 — 六阶段流水线 release 阶段使用,也是"AI-native 外溢到其他职能"的一例。
+"""AI 生成发布说明 — 供项目自己的 release 流程调用,也是"AI-native 外溢到其他职能"的一例。
 
 从上一个 release tag 到 HEAD 的提交/合并的 PR 标题汇总,交给模型生成面向用户的发布说明。
-输出到 stdout(deploy.yml 把它重定向到 RELEASE_NOTES.md 并推送到团队频道)。
+输出到 stdout(各项目的发布流水线可把它重定向到 RELEASE_NOTES.md 并推送到团队频道)。
 
 本地试跑(无模型 key 时回退到原始 commit 列表):
     python scripts/gen_release_notes.py --since-last-tag
