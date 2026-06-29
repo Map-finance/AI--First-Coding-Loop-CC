@@ -1,0 +1,15 @@
+# 上游已从 harness 移除的文件——update.sh 会在目标仓里删掉它们。
+# 每行一个相对目标仓根的路径;# 开头为注释。
+# 维护约定:当你从 harness 删除一个会被 install 分发的文件时,在这里登记它,
+# 这样已安装的项目仓 update 时会自动清理,不会留下悬挂文件。
+
+# v2.x:去掉内置自动部署(deploy 高度项目特定,改由各项目自配)
+.github/workflows/deploy.yml
+
+# v2.x:测试闭环/任务拆解让位 deepdog 管理端(若曾装过)
+scripts/gen_test_tasks.py
+scripts/qa_review.py
+scripts/task_splitter.py
+scripts/create_issues_from_draft.py
+scripts/_gh_tracker.py
+.github/workflows/qa-handoff.yml
