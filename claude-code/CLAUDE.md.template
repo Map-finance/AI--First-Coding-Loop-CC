@@ -40,6 +40,7 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 - 起服务:`[如 make dev / npm run dev / docker compose up / go run ./cmd/...]`
 - 跑测试:`[如 make test / npm test / go test ./... / pytest]`(关键路径需有集成/E2E 测试)
 - 类型检查/lint:`[如 make check / npm run lint / golangci-lint run / ruff check]`
+- **提交前自检入口**(pre-commit hook 会调它):定义一个 `precommit` 入口——Makefile 的 `precommit:` 目标 或 package.json 的 `scripts.precommit`,内容 = lint + 类型检查 + 改动文件单测(按本仓技术栈填)。hook 通用,命令落这里。
 
 ## 编码规范
 - 语言版本:[Node 20 / Go 1.22 / Python 3.12]
@@ -72,6 +73,7 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 5. 开 PR 时在描述里列出权衡点,并指出需要人类重点看的"战略风险"。
 6. 复用 docs-repo 的 `contracts/`(经 `docs/` submodule),不要在仓内复制跨服务类型。
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
+8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
 
 ## 给 triage agent 的工作约定
 - 错误来源:可观测后端(CloudWatch / Prometheus 等)+ Sentry。
@@ -101,6 +103,11 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 ### Sub-agents(`agents/<name>.toml`)
 角色化的 agent + 模型分层:`explorer`(Haiku)/`implementer`(Sonnet)/三类 `verifier`(分层)/
 `triage-scorer`(Sonnet)/`checker`(Sonnet)。**写代码的 agent 不能是判断 done 的 agent**。
+
+> **别混 `checker` 与 `verifier`(两个不同职责)**:
+> - `checker` = goal_loop 的**完成度判定**,返回 `done|continue|stuck`——判断"**任务做完没**"。
+> - `verifier-quality/security/performance/dependency` = **code review**——评审"**代码好不好**"(质量/安全/性能/依赖)。
+> 本地自审(开 PR 前)和 PR 门禁的代码评审,都用 `verifier-*` 那套,**不是 checker**。spec 早期把 checker 当本地自审 reviewer 是角色错位,以本说明为准。
 
 ### State(`state/`)
 agent 的外置记忆:`triage-history.jsonl`、`token-usage.jsonl`、`comprehension-log.jsonl`、

@@ -146,10 +146,12 @@ if [ "$NO_SKILLS" = "0" ]; then
   bash "$SCRIPT_DIR/ensure_skills.sh" "$TARGET" || skip "ensure_skills 有告警,请查看上方输出"
 fi
 
-# === 装 pre-push hook(拦直接 push main)===
+# === 装 git hooks(pre-push 拦直接 push main;pre-commit 提交前自检)===
 if [ -d "$TARGET/.git" ]; then
   cp "$SOURCE_DIR/core/hooks/pre-push" "$TARGET/.git/hooks/pre-push" && chmod +x "$TARGET/.git/hooks/pre-push"
   ok "+ .git/hooks/pre-push(拦直接 push main)"
+  cp "$SOURCE_DIR/core/hooks/pre-commit" "$TARGET/.git/hooks/pre-commit" && chmod +x "$TARGET/.git/hooks/pre-commit"
+  ok "+ .git/hooks/pre-commit(提交前自检,调项目 precommit 入口)"
 fi
 
 cat <<EOF

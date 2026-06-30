@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# =============================================================================
+# pre-commit — 提交前快速机器自检(lint/format/typecheck/改动文件单测)
+# -----------------------------------------------------------------------------
+# 设计:通用、零语言假设。本 hook 不写死任何语言命令,只调用项目约定的统一入口
+#       `precommit`;具体跑什么由各项目按自己技术栈定义:
+#         - Makefile:    precommit:  golangci-lint run && go test ./...
+#         - package.json:"scripts": { "precommit": "eslint . && tsc --noEmit && vitest run --changed" }
+#         - Python:      Makefile    precommit: ruff check && mypy . && pytest -q
+#       机制在 harness,命令在项目——和 CLAUDE.md 占位、ci.yml 文件守卫同一思路。
+#
+# 未定义 precommit 入口 → 提示并跳过(不阻塞,避免误伤未配置的项目)。
+# =============================================================================
+set -e
+
+run=""
+if [ -f Makefile ] && grep -qE '^precommit:' Makefile 2>/dev/null; then
+  run="make precommit"
+elif [ -f package.json ] && grep -q '"precommit"' package.json 2>/dev/null; then
+  if command -v pnpm >/dev/null 2>&1; then run="pnpm precommit"
+  elif command -v npm >/dev/null 2>&1; then run="npm run precommit"
+  fi
+fi
+
+if [ -n "$run" ]; then
+  echo "▶ pre-commit: $run"
+  if ! $run; then
+    echo "✗ pre-commit 自检失败——修好再提交(或临时 git commit --no-verify 跳过)。" >&2
+    exit 1
+  fi
+else
+  echo "∅ pre-commit: 未定义 precommit 入口,跳过本地自检。"
+  echo "  建议按本仓技术栈定义一个 'precommit' 入口(Makefile 的 precommit: 或 package.json scripts.precommit),"
+  echo "  内容 = lint + 类型检查 + 改动文件的单测,把低级错误挡在提交前。"
+fi
