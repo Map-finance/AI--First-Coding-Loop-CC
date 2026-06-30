@@ -71,6 +71,7 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 4. 自带测试,确保本仓的集成/测试命令(见"本地开发"节)通过。
 5. 开 PR 时在描述里列出权衡点,并指出需要人类重点看的"战略风险"。
 6. 复用 docs-repo 的 `contracts/`(经 `docs/` submodule),不要在仓内复制跨服务类型。
+7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 
 ## 给 triage agent 的工作约定
 - 错误来源:可观测后端(CloudWatch / Prometheus 等)+ Sentry。
