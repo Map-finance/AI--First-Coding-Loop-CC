@@ -14,14 +14,14 @@
 
 ```
 apps/
-  web/                  # React 前端（TypeScript + pnpm）
-services/               # Go 后端微服务（hexagonal arch，多服务共一 Go module）
-  cmd/                  # 各服务 main 入口
-  internal/services/    # 各微服务实现
-  internal/shared/      # 共享包（money、ulid、kafka、db 等）
-  api/proto/            # Protobuf 定义（buf 管理）
-  api/gen/              # 生成代码（buf generate，提交到仓库）
-  migrations/           # DB 迁移脚本（sqlc）
+  web/                  # 前端应用（[按项目填：React/Vue/Next.js 等 + 包管理器]）
+services/               # 后端微服务（[按项目填：Go hexagonal / Python / Node.js 等]）
+  cmd/                  # 各服务 main 入口（Go 项目）
+  internal/services/    # 各微服务实现（Go hexagonal 项目）
+  internal/shared/      # 跨服务共享包（[按项目实际依赖填写]）
+  api/proto/            # Protobuf 定义（[按项目填：buf / protoc 等]）
+  api/gen/              # 生成代码（提交到仓库）
+  migrations/           # DB 迁移脚本（[按项目填：migrate / sqlc / Alembic 等]）
 auto-tests/             # 独立测试服务模块
   e2e/                  # Playwright 前端 E2E
   api/                  # 接口集成测试
@@ -78,19 +78,23 @@ make web-typecheck  # pnpm typecheck
 
 ## 编码规范
 
-### 后端（Go）
+> ⚠️ **以下"后端"与"前端"小节是 Go + React 示例，必须按项目实际技术栈整节替换。**
+> 保留"通用"小节；其他小节若技术栈不同，删除示例内容并填写本项目的约束。
+> 详细规则通过对应 skill 承载（见下方"规范 skill 强制加载"表），这里只列核心禁区和跳转指针。
+
+### 后端（Go 示例，按项目替换）
 - Go 版本：[填写，如 1.26]，`go.toolchain` 锁定，不得随意升级
 - 格式化：`gofmt`（`make services-fmt`），提交前必跑，CI 会校验
 - 架构：hexagonal（domain / ports / adapters / app / bootstrap），禁止跨层直接调用
-- 错误处理：哨兵错误 + `errors.Is/As`，资金操作错误绝不吞 → 见 `go-error-handling` skill
+- 错误处理：哨兵错误 + `errors.Is/As` → 见 `go-error-handling` skill
 - 日志：只用 `log/slog`，禁 zap/zerolog/fmt.Print* → 见 `go-logging` skill
 - ID：跨服务主键用 ULID（`oklog/ulid/v2`），禁自增 int ID 跨服务引用
-- 测试：新代码必须带测试；关键路径（资金/结算）必须有集成测试（`-race` flag）
+- 测试：新代码必须带测试；关键路径必须有集成测试（`-race` flag）
 
-### 前端（React）
+### 前端（React 示例，按项目替换）
 - TypeScript strict mode，禁 `any`
 - 函数组件 + hooks，禁 class component
-- 金额展示：API 返回 `string` 类型的金额，用 `formatTokenAmount(str, decimals)` 展示，**禁止前端做浮点运算**
+- 数值精度：涉及金额/精度敏感数值时，API 返回 `string`，**禁止前端做浮点运算** → 见 `financial-numerics` skill（如项目适用）
 - 格式化：prettier，提交前必跑
 - 测试：组件测试 + 关键业务逻辑单测
 
@@ -105,7 +109,7 @@ make web-typecheck  # pnpm typecheck
 - 不得在日志/响应中泄露 PII 或凭证。
 
 ## 特性开关(强制)
-- **每个新功能必须藏在特性开关后**(见 `flags/feature-flags.ts`)。
+- **每个新功能必须藏在特性开关后**（见 `[feature-flag 入口文件路径，按项目填写，如 internal/flags/flags.go 或 src/flags/index.ts]`）。
 - 新增 flag 时:在代码里用类型安全的 key,并在 PR 描述里写明 flag 名与灰度计划。
 - 不要删旧 flag 而不清理其分支逻辑。
 
@@ -119,12 +123,12 @@ make web-typecheck  # pnpm typecheck
 3. 不扩大范围;任务模板(`prompts/architect-task.md`)第 3 节之外的需求,先问架构师。
 4. 自带测试,确保本仓的集成/测试命令(见"本地开发"节)通过。
 5. 开 PR 时在描述里列出权衡点,并指出需要人类重点看的"战略风险"。
-6. 跨服务共享类型放 `services/internal/shared/`，不要在各服务间复制。
+6. 跨服务共享类型放 `[共享包路径，如 services/internal/shared/ 或 packages/shared/]`，不要在各服务间复制。
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
 
 ## 给 triage agent 的工作约定
-- 错误来源:可观测后端(CloudWatch / Prometheus 等)+ Sentry。
+- 错误来源：可观测后端（[按项目填：Datadog / Grafana + Prometheus / CloudWatch 等]）+ 错误追踪（[Sentry / Rollbar 等]）。
 - 按错误指纹聚类、九维打分(见 `scripts/triage_engine.py` + `skills/triage-severity-scorer/SKILL.md`)。
 - 建单前先去重:用 `state/triage-history.jsonl` 识别首次/稳定/回归;已知 flake 自动降权。
 - 建议步骤遵循 `skills/pr-investigator/SKILL.md`。
@@ -141,12 +145,10 @@ make web-typecheck  # pnpm typecheck
 
 任何 agent 在以下情形**必须先 Read 对应 skill 再动手**（不是"自觉"，是硬规则）：
 
+**所有项目通用（不随技术栈变化）：**
+
 | 情形 | 必须先读 skill |
 |------|--------------|
-| 涉及金额/价格/余额/token 数量 | `financial-numerics` |
-| 涉及 Go 日志输出 | `go-logging` |
-| 涉及 Go 错误处理/资金操作 | `go-error-handling` |
-| 新增服务/外部调用/请求链路 | `go-observability` |
 | 涉及 SQL/ORM/DB 迁移 | `sql-optimization` |
 | 外部调用/并发/缓存/监控 | `performance-review` |
 | 处理用户输入/鉴权/密钥/序列化 | `secure-coding` |
@@ -155,7 +157,25 @@ make web-typecheck  # pnpm typecheck
 | 任意功能变更完成后（PR 前） | `changelog-output` |
 | 任何改动的底线 | `clean-code` + `testing-standards` |
 | 新功能 | 额外加 `feature-flag-setup` |
-| 前端展示金额 | `financial-numerics`（前端部分） |
+
+**技术栈相关（按项目实际保留/替换）：**
+
+> Go 后端项目保留以下行；其他技术栈请替换为对应的 logging / error-handling / observability skill（若尚未创建，在 `skills/` 下新建）。
+
+| 情形 | 必须先读 skill | 适用范围 |
+|------|--------------|---------|
+| 涉及 Go 日志输出 | `go-logging` | Go 后端 |
+| 涉及 Go 错误处理 | `go-error-handling` | Go 后端 |
+| 新增服务/外部调用/请求链路 | `go-observability` | Go 后端 |
+
+**领域相关（按项目业务保留/移除）：**
+
+> 金融/资产类项目保留；非金融项目可删除这两行。
+
+| 情形 | 必须先读 skill | 适用范围 |
+|------|--------------|---------|
+| 涉及金额/价格/余额/token 数量 | `financial-numerics` | 金融/资产类项目 |
+| 前端展示金额或精度敏感数值 | `financial-numerics`（前端部分） | 金融/资产类项目 |
 
 这些 skill 同时被 PR 的 AI 评审引用（见 `.github/workflows/ai-review.yml`）。开发期漏掉的，评审期会拦。
 
