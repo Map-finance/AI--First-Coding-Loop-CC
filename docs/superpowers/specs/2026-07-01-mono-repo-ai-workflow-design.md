@@ -14,6 +14,7 @@
 2. 分支/提交/PR 命名携带服务信息,BIOS 自动路由任务给对应 agent/人
 3. 测试用例文档与代码同步维护(开发阶段,同一 PR)
 4. 自动化测试发现 bug 后直接回写 BIOS,不经 GitHub Issues 中转
+5. 集成 graphify 知识图谱,降低 agent 导航 token 消耗,自动生成 PR 影响范围
 
 ---
 
@@ -65,6 +66,10 @@
 │   ├── e2e/                        # Playwright 前端 E2E 测试
 │   ├── api/                        # 接口集成测试
 │   └── load/                       # 压测脚本(k6 等)
+├── graphify-out/                   # 知识图谱(提交到仓库,随代码更新)
+│   ├── GRAPH_REPORT.md             # 1页摘要:god nodes + 社区结构(agent 每 session 读一次)
+│   ├── graph.json                  # 完整图谱(agent 按需查询,不整体读)
+│   └── cache/                      # SHA256 缓存(只重处理变更文件)
 └── .claude/                        # harness 安装点
 ```
 
@@ -329,21 +334,82 @@ POST /api/issues
 
 ---
 
-## 7. 实现优先级
+## 7. Graphify 知识图谱集成
+
+### 7.1 安装(自动,作为仓库 setup 的一部分)
+
+`requirements-dev.txt` 或 `Makefile` 的 `setup` target 中包含:
+
+```bash
+pip install graphifyy          # 安装 graphify
+graphify claude install        # 写入 CLAUDE.md 规则 + PreToolUse hook
+graphify hook install          # 安装 post-commit / post-checkout git hook
+```
+
+新成员 clone 仓库后执行 `make setup` 即自动完成,无需手动操作。
+
+### 7.2 图谱提交到仓库
+
+`graphify-out/` **不加入 `.gitignore`**,随代码提交:
+
+- `GRAPH_REPORT.md` — 1 页摘要,agent 每 session 读一次,了解 god nodes 和社区结构
+- `graph.json` — 完整图谱,agent 按需查询(`/graphify query` / `path`),不整体读
+- `cache/` — SHA256 缓存,保证重复运行只处理变更文件
+
+**好处:** 任何 agent clone 仓库后立即有可用图谱,无需首次重建(首次重建需要 LLM token)。
+
+### 7.3 自动更新机制
+
+```
+git commit → post-commit hook → graphify --update   (只处理变更文件,走缓存)
+git checkout → post-checkout hook → graphify --cluster-only  (重新聚类,不重提取)
+```
+
+图谱随每次 commit 自动刷新,无需人工维护。
+
+### 7.4 Agent 使用模式
+
+```
+session 开始
+  → 读 graphify-out/GRAPH_REPORT.md  (~2-5k tokens,一次)
+  → 了解 god nodes、服务社区、意外连接
+
+开发过程中(按需)
+  → /graphify query "哪些模块依赖 api/auth.go?"
+  → /graphify path <changed_file> <service_boundary>
+
+生成 PR 草稿
+  → graphify path 输出 → 填入 PR 模板"影响范围"section
+  → 比 agent 自己猜更准确
+```
+
+### 7.5 对 docs/ 的影响
+
+graphify 自动生成模块结构信息,因此 `docs/modules/` 中:
+- **不需要**手动维护"代码结构是什么"(图谱负责)
+- **仍需要**手动维护"为什么这么设计"(战略决策、设计动机)
+
+`docs/modules/<service>.md` 内容精简为:设计动机 + 关键约束 + 演进方向,不再描述代码结构。
+
+---
+
+## 8. 实现优先级
 
 | 阶段 | 内容 | 备注 |
 |------|------|------|
 | **V1** | 新仓库脚手架 + 目录结构 + Harness PR prompt 更新 + pre-push hook | 立即可用 |
+| **V1** | Graphify 自动安装 + git hook + 初始图谱提交 | `make setup` 一键完成 |
 | **V1** | BIOS: `parseServiceFromBranch` + service 标签写入 | 小改动 |
 | **V1** | CI → BIOS bug 工单 API + CI 脚本 | 需要 CI 配置 |
-| **V2** | BIOS: `workspace_service_routing` 表 + 自动指派 | 需要 DB migration + UI |
+| **V2** | BIOS: agent `services` 字段 + 自动指派 | 需要 DB migration + UI |
 | **V2** | test-cases MD → YAML 脚本自动生成 | 需要 agent skill |
 
 ---
 
-## 8. 不在本次范围内
+## 9. 不在本次范围内
 
 - deepdog-BIOS 和 deepdog-work 代码本身的改动(继续独立维护)
 - Automation UI 的事件过滤扩展
 - mobile/desktop 客户端
 - 多 workspace 的 service 路由隔离(单 workspace 场景优先)
+- graphify 的 Neo4j 推送、SVG 导出等高级功能
