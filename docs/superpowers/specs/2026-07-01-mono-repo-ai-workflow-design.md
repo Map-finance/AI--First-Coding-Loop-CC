@@ -23,58 +23,177 @@
 ```
 <repo-root>/
 ├── apps/
-│   └── web/                        # 前端应用
-├── services/
-│   ├── api/                        # API 网关服务
-│   ├── matching-engine/            # 撮合引擎
-│   ├── indexer/                    # 索引器
-│   └── sdk/                        # 共享 SDK(库,非独立部署)
+│   └── web/                        # 前端应用（TypeScript + pnpm）
+├── services/                       # Go 后端（多服务共一 Go module，hexagonal arch）
+│   ├── cmd/                        # 各服务 main 入口（每个子目录编译为一个二进制）
+│   │   ├── api/
+│   │   ├── matching-engine/
+│   │   └── indexer/
+│   ├── internal/
+│   │   ├── services/               # 各微服务实现
+│   │   │   ├── api/                # hexagonal: domain/ ports/ adapters/ app/ bootstrap/
+│   │   │   ├── matching-engine/
+│   │   │   └── indexer/
+│   │   └── shared/                 # 跨服务共享包（money、ulid、kafka、db 等）
+│   ├── api/
+│   │   ├── proto/                  # Protobuf 定义（buf 管理）
+│   │   └── gen/                    # 生成代码（buf generate，提交到仓库）
+│   ├── migrations/                 # DB 迁移脚本（sqlc + migrate）
+│   ├── go.mod
+│   ├── go.sum
+│   └── Makefile                    # 内层执行 Makefile（verify/proto/db/fmt/build）
 ├── docs/
-│   ├── architecture/               # 整体架构(全局,不分服务)
+│   ├── architecture/               # 整体架构（全局，不分服务）
 │   │   ├── overview.md             # 系统架构图 + 各服务职责说明
 │   │   ├── service-map.md          # 服务间依赖与通信关系
 │   │   └── tech-stack.md           # 技术选型及理由
-│   ├── modules/                    # 各模块功能设计(每服务一份)
+│   ├── modules/                    # 各模块功能设计（每服务一份）
 │   │   ├── web.md
 │   │   ├── api.md
 │   │   ├── matching-engine.md
-│   │   ├── indexer.md
-│   │   └── sdk.md
-│   ├── feature-list.md             # 功能清单(全局,记录已上线/开发中/规划功能)
-│   ├── api/                        # HTTP/RPC 接口文档(每服务一份)
-│   │   ├── web.md
+│   │   └── indexer.md
+│   ├── feature-list.md             # 功能清单（全局，记录已上线/开发中/规划功能）
+│   ├── api/                        # HTTP/RPC 接口文档（每服务一份）
 │   │   ├── api.md
-│   │   └── sdk.md
-│   ├── data-model/                 # 数据库表结构 + 字段说明(每服务一份)
+│   │   └── ...
+│   ├── data-model/                 # 数据库表结构 + 字段说明（每服务一份）
 │   │   ├── api.md
 │   │   └── matching-engine.md
 │   ├── changelogs/                 # 每个服务独立 changelog
 │   │   ├── web/CHANGELOG.md
 │   │   ├── api/CHANGELOG.md
 │   │   ├── matching-engine/CHANGELOG.md
-│   │   ├── indexer/CHANGELOG.md
-│   │   └── sdk/CHANGELOG.md
-│   ├── specs/                      # 设计决策文档(高层,跨服务)
+│   │   └── indexer/CHANGELOG.md
+│   ├── specs/                      # 设计决策文档（高层，跨服务）
 │   ├── plans/                      # 实现计划
-│   └── test-cases/                 # 测试用例 MD(按服务分目录)
+│   └── test-cases/                 # 测试用例 MD（按服务分目录）
 │       ├── web/
 │       ├── api/
 │       ├── matching-engine/
-│       ├── indexer/
-│       └── sdk/
+│       └── indexer/
 ├── auto-tests/
 │   ├── e2e/                        # Playwright 前端 E2E 测试
 │   ├── api/                        # 接口集成测试
-│   └── load/                       # 压测脚本(k6 等)
-├── graphify-out/                   # 知识图谱(提交到仓库,随代码更新)
-│   ├── GRAPH_REPORT.md             # 1页摘要:god nodes + 社区结构(agent 每 session 读一次)
-│   ├── graph.json                  # 完整图谱(agent 按需查询,不整体读)
-│   └── cache/                      # SHA256 缓存(只重处理变更文件)
-└── .claude/                        # harness 安装点
+│   └── load/                       # 压测脚本（k6 等）
+├── graphify-out/                   # 知识图谱（提交到仓库，随代码更新）
+│   ├── GRAPH_REPORT.md             # 1页摘要：god nodes + 社区结构（agent 每 session 读一次）
+│   ├── graph.json                  # 完整图谱（agent 按需查询，不整体读）
+│   └── cache/                      # SHA256 缓存（只重处理变更文件）
+├── .claude/                        # harness 安装点（skills/、agents/、settings/）
+├── .github/                        # CI/CD 工作流
+└── Makefile                        # 根级委托 Makefile（services-* / web-* / infra-up）
 ```
 
-**合法服务名**(`<service>` 字段的合法值):
-`web` | `api` | `matching-engine` | `indexer` | `sdk`
+### 1.1 Hexagonal 微服务内部结构
+
+每个 `services/internal/services/<svc>/` 目录遵循 hexagonal architecture：
+
+```
+<svc>/
+├── domain/          # 纯业务逻辑：实体、值对象、领域服务（无框架依赖）
+├── ports/           # 接口定义：输入端口（use cases）+ 输出端口（仓储/消息接口）
+├── adapters/        # 接口实现：HTTP handler、gRPC server、DB repo、Kafka consumer
+├── app/             # 应用服务：编排 use case，注入依赖
+└── bootstrap/       # 启动装配：从 cmd/ 调用，构建依赖图，启动服务
+```
+
+**层级规则（严格，CI lint 强制）:**
+- `domain/` 不得 import `adapters/`、`app/`、`bootstrap/`，也不得 import 任何外部框架
+- `ports/` 只能 import `domain/`
+- `adapters/` 可 import `domain/` + `ports/`，不得 import `app/`
+- `app/` 可 import `domain/` + `ports/`，不得 import `adapters/`
+- 跨服务共享类型放 `shared/`，不在服务间直接 import
+
+### 1.2 Makefile 分层
+
+**根级 `Makefile`（委托层，不含业务逻辑）:**
+
+| Target | 说明 |
+|--------|------|
+| `make setup` | 安装所有依赖（services + web + graphify） |
+| `make check` | 全量检查（services verify + web typecheck + web test） |
+| `make infra-up` | 启动本地基础设施（Postgres、Kafka、Redis 等） |
+| `make services-verify` | → `cd services && make verify`（fmt + vet + lint + test） |
+| `make services-proto` | → `cd services && make proto`（buf lint + buf generate） |
+| `make services-db` | → `cd services && make db`（sqlc generate） |
+| `make services-fmt` | → `cd services && make fmt`（gofmt -w） |
+| `make web-dev` | → `cd apps/web && pnpm dev` |
+| `make web-test` | → `cd apps/web && pnpm test` |
+| `make web-typecheck` | → `cd apps/web && pnpm typecheck` |
+
+**`services/Makefile`（执行层，CI 与根级均调用此层）:**
+
+| Target | 说明 |
+|--------|------|
+| `make verify` | fmtcheck + go vet + golangci-lint + `go test -race ./...` |
+| `make proto` | buf lint + buf generate（结果写入 api/gen/，需提交） |
+| `make db` | sqlc generate（从 migrations/ 生成 DB 层代码） |
+| `make fmt` | `gofmt -w cmd internal` |
+| `make build` | `go build ./cmd/...`（验证全量可编译） |
+
+> CI 的 `go-quality` job 和 `proto-quality` job 直接在 `services/` 目录执行对应 make target，不经根级 Makefile。
+
+**合法服务名**（`<service>` 字段的合法值，按实际项目列表填写）:
+`web` | `api` | `matching-engine` | `indexer`
+
+> `shared/` 包不作为独立服务，不参与分支/commit 命名中的 `<service>` 段。
+
+### 1.3 Go 编码规范
+
+> 以下规范同步体现在 harness skills 中（见第 5 节）。agent 动手前必须先读对应 skill。
+
+#### 金额与精度
+
+| 类型 | 用途 | 底层 |
+|------|------|------|
+| `Decimal18` | DB 存储 + JSON 序列化 | `NUMERIC(38,18)`，scale 固定 18 |
+| `Dec` | 所有中间运算 | `shopspring/decimal` |
+
+- 禁止 `decimal.NewFromFloat()`（lint 强制，浮点精度不可控）；改用 `decimal.NewFromString()` 或 `decimal.New()`
+- **Web3 token 精度**：`token.Decimals` 从 DB 读取，绝不硬编码（不同 token 精度可能是 6、8、18 等）
+  - 入链（链上 raw → 内部 Decimal18）：`money.FromMinorUnits(rawAmount, token.Decimals)`
+  - 出链（内部 Decimal18 → 链上 raw）：`money.ToMinorUnits(token.Decimals)`
+- 账本/结算字段 DB 类型升级为 `NUMERIC(78,18)`（防止高频撮合溢出）
+
+#### ID 规范
+
+- 跨服务主键：ULID（`oklog/ulid/v2`），禁止自增 int ID 跨服务引用
+- 单服务内部可使用自增 ID，但不得暴露至接口层或其他服务
+
+#### 日志
+
+- 只用 `log/slog`，禁 zap / zerolog / `fmt.Print*`
+- 所有日志调用必须传 `ctx`：`slog.InfoContext(ctx, "msg", "key", val)`
+- 字段名用 snake_case：`user_id`、`order_id`、`duration_ms`
+- 慢路径固定字段：`kind`、`op`、`duration_ms`、`threshold_ms`
+- **Log storm 防护**：循环体内 sample（每 N 次记一条）；metrics 永不 sample
+- PII 脱敏：通过 `slog.HandlerOptions.ReplaceAttr` 统一过滤，不在业务代码散点处理
+
+#### 错误处理
+
+- 哨兵错误：`var ErrXxx = errors.New("...")`，用 `errors.Is` / `errors.As` 判断，禁止字符串比较
+- 多错误合并：`errors.Join(err1, err2)`
+- 资金/结算操作错误：绝不吞掉 → 进入 protection mode + 触发告警（宁可停服，不可静默损失）
+
+#### 可观测性
+
+- OTel span：只在 `adapters/` 层创建；`domain/` 和 `app/` 层不引入 OTel 依赖
+- Prometheus metrics：在 middleware / interceptor 层收集，不在业务逻辑层埋点
+- Prometheus label 约定：`service`、`method`、`status`、`shard_id`（基数可控，禁止用 user_id 做 label）
+
+#### 配置
+
+- 配置库：`koanf`，禁 viper
+- 启动时 fail-fast：必填配置缺失直接 `panic`，不静默降级
+
+#### 规范 ↔ Skill 对照
+
+| 规范 | 对应 harness skill | 强制时机 |
+|------|-------------------|---------|
+| 金额 / token 精度 | `financial-numerics` | 涉及金额、价格、余额、token 数量时 |
+| 日志 | `go-logging` | 涉及任何 Go 日志输出时 |
+| 错误处理 | `go-error-handling` | 涉及错误返回、资金操作时 |
+| 可观测性 | `go-observability` | 新增服务 / 外部调用 / 请求链路时 |
 
 ---
 
@@ -199,38 +318,49 @@ auto-tests/<type>/<service>/<feature>.yaml / .spec.ts   ← 可执行脚本
 
 ## 5. Harness 变更(AI--First-Coding-Loop-CC)
 
-### 5.1 PR 生成 Prompt
+> **状态说明:** 本节记录实际已落地的变更。原设计中的 5.1/5.2/5.3 已以不同形式实现，见下。
 
-新增/更新 PR 生成 skill prompt,要求 agent 在提交 PR 草稿前必须完成以下文档同步:
+### 5.1 CLAUDE.md.template 更新（已完成）
 
-| 改动类型 | 必须同步更新的文档 | 对应 harness skill |
-|----------|-------------------|-------------------|
-| 新增/修改 HTTP/RPC 接口 | `docs/api/<service>.md` | `api-doc-output` |
-| 新增/修改 DB 表/字段/索引 | `docs/data-model/<service>.md` | `data-model-output` |
-| 新增/修改功能模块行为 | `docs/modules/<service>.md` | — |
-| 任意功能变更 | `docs/feature-list.md`(追加或更新条目) | — |
-| 任意变更 | `docs/changelogs/<service>/CHANGELOG.md` | — |
-| 可测功能变更 | `docs/test-cases/<service>/` | — |
+`claude-code/CLAUDE.md.template` 全面重写，适配单仓结构：
 
-全部文档更新后方可生成 PR 草稿。PR 模板的"影响范围"需列出所有修改过的文档路径。
+- **目录结构**：更新为 mono-repo 布局（apps/web/ + services/ hexagonal + auto-tests/ + docs/ + graphify-out/ + .claude/）
+- **Session 开始必读**：新增 `graphify-out/GRAPH_REPORT.md` 优先读取规则
+- **编码规范**：新增 Go 后端规范（hexagonal 层规则、slog、ULID、错误处理）+ React 前端规范（TypeScript strict、禁 class component、金额用 string）
+- **强制加载表**：新增 13 行 skill 强制加载规则（按情形 → 必读 skill）
+- **文档同步义务表**：新增 PR 前必须完成的文档同步要求（改接口 → api.md，改 DB → data-model.md，等）
+- **工作约定 Rule 7**：批量推送规则——修完所有评审意见后一次性 commit & push，禁止碎推
 
-### 5.2 Pre-Push Git Hook
+原设计的"PR 生成 prompt skill"和"pre-push hook 检查 PR 描述结构"均通过 CLAUDE.md.template 的强制规则实现，不单独做 hook 脚本。
 
-`.claude/hooks/pre-push`:
+### 5.2 新增 Skills（已完成）
 
-检查 PR 描述(从 `git log` 最新 commit message 或 PR body 草稿文件读取)是否包含:
-- `## 功能点`
-- `## 影响范围`
-- `## 测试用例`
-- `## Breaking Changes`
-- `## 迁移步骤`
-- `## Rollback 方案`
+| Skill | 路径 | 覆盖内容 |
+|-------|------|---------|
+| `go-logging` | `skills/go-logging/SKILL.md` | slog only；context 传播；snake_case 字段；慢路径固定格式；log storm 防护；PII ReplaceAttr 过滤 |
+| `go-error-handling` | `skills/go-error-handling/SKILL.md` | 哨兵错误；errors.Is/As；errors.Join；资金错误绝不吞 → protection mode + 告警 |
+| `go-observability` | `skills/go-observability/SKILL.md` | OTel span 在 adapters 层；Prometheus 在 middleware 层；label 约定（service/method/status/shard_id） |
+| `changelog-output` | `skills/changelog-output/SKILL.md` | Keep-a-changelog 格式；Unreleased 区块；各服务独立文件（docs/changelogs/\<service\>/）；Breaking Changes 必须单独成节 |
 
-任一缺失则阻断 push,输出错误提示。这是兜底检查;主要约束在 prompt 层。
+原设计的"session 结束前 changelog 检查"由 `changelog-output` skill 的约束替代——开发完成后 agent 必须先读 skill 再写 changelog，PR 前检查义务在 CLAUDE.md.template 文档同步表中强制。
 
-### 5.3 Changelog 约束
+### 5.3 更新 Skills（已完成）
 
-agent session 结束前检查:每个在"影响范围"里列出的服务,其 `docs/changelogs/<service>/CHANGELOG.md` 的最后修改时间是否晚于 session 开始时间。未更新则提示 agent 补充。
+| Skill | 变更内容 |
+|-------|---------|
+| `financial-numerics` | 新增 Go 部分：Decimal18+Dec 两类型、禁 NewFromFloat（lint 强制）、web3 token.Decimals 从 DB 读；新增 React 前端部分：金额用 string、formatTokenAmount、禁浮点运算 |
+| `api-doc-output` | 路径更新：`docs/api/<service>.md`；新增格式模板（金额字段标注为 string）；移除 docs-repo/contracts/ 引用 |
+| `data-model-output` | 路径更新：`docs/data-model/<service>.md`；新增 NUMERIC(38,18) 约定，禁 FLOAT；新增迁移说明模板（可回滚性、锁影响评估） |
+
+### 5.4 CI 工作流更新（已完成）
+
+`core/workflows/ci.yml` 变更：
+
+- **路径过滤**：Go 路径 `services/**/*.go` + `services/go.mod`；新增 proto 路径 `services/api/proto/**/*.proto` + `services/buf.yaml`
+- **Go 版本**：从 `services/go.mod` 动态读取（`go-version-file: services/go.mod`），不硬编码
+- **`working-directory`**：所有 Go/proto job 统一设为 `services`
+- **新增 `proto-quality` job**：buf lint + buf generate + 校验生成代码已提交（未提交则 CI 报错）
+- **`ci-gate`**：将 `proto-quality` 纳入必须通过的 job 列表
 
 ---
 

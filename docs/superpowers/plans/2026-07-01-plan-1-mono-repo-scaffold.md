@@ -13,45 +13,44 @@
 ## 文件清单
 
 **创建:**
-- `Makefile` — setup/check/help targets
-- `requirements-dev.txt` — 开发依赖(含 graphifyy)
-- `.gitignore` — 标准忽略规则(不含 graphify-out/)
-- `CLAUDE.md` — agent 上下文(graphify 读取规则 + 项目约定)
+- `Makefile` — 根级委托 Makefile（services-* / web-* / infra-up）
+- `services/Makefile` — 内层执行 Makefile（verify/proto/db/fmt/build）
+- `services/go.mod` — 单 Go module（`go mod init <module-name>`）
+- `requirements-dev.txt` — 开发依赖（含 graphifyy）
+- `.gitignore` — 标准忽略规则（不含 graphify-out/）
+- `CLAUDE.md` — 从 harness `CLAUDE.md.template` 复制后填入占位符（不手写）
 - `apps/web/.gitkeep`
-- `services/api/.gitkeep`
-- `services/matching-engine/.gitkeep`
-- `services/indexer/.gitkeep`
-- `services/sdk/.gitkeep`
+- `services/cmd/{api,matching-engine,indexer}/.gitkeep`
+- `services/internal/services/{api,matching-engine,indexer}/.gitkeep`
+- `services/internal/shared/.gitkeep`
+- `services/api/proto/.gitkeep`
+- `services/api/gen/.gitkeep`
+- `services/migrations/.gitkeep`
 - `docs/architecture/overview.md` — 架构说明模板
 - `docs/architecture/service-map.md` — 服务依赖图模板
 - `docs/architecture/tech-stack.md` — 技术选型模板
-- `docs/modules/web.md` — 各服务模块设计模板(×5)
+- `docs/modules/web.md` — 各服务模块设计模板（×4）
 - `docs/modules/api.md`
 - `docs/modules/matching-engine.md`
 - `docs/modules/indexer.md`
-- `docs/modules/sdk.md`
 - `docs/feature-list.md` — 功能清单模板
-- `docs/api/web.md` — 接口文档模板(×3)
-- `docs/api/api.md`
-- `docs/api/sdk.md`
-- `docs/data-model/api.md` — 数据模型模板(×2)
+- `docs/api/api.md` — 接口文档模板
+- `docs/data-model/api.md` — 数据模型模板（×2）
 - `docs/data-model/matching-engine.md`
-- `docs/changelogs/web/CHANGELOG.md` — changelog 模板(×5)
+- `docs/changelogs/web/CHANGELOG.md` — changelog 模板（×4）
 - `docs/changelogs/api/CHANGELOG.md`
 - `docs/changelogs/matching-engine/CHANGELOG.md`
 - `docs/changelogs/indexer/CHANGELOG.md`
-- `docs/changelogs/sdk/CHANGELOG.md`
 - `docs/specs/.gitkeep`
 - `docs/plans/.gitkeep`
-- `docs/test-cases/web/.gitkeep` — 测试用例目录(×5)
+- `docs/test-cases/web/.gitkeep` — 测试用例目录（×4）
 - `docs/test-cases/api/.gitkeep`
 - `docs/test-cases/matching-engine/.gitkeep`
 - `docs/test-cases/indexer/.gitkeep`
-- `docs/test-cases/sdk/.gitkeep`
 - `auto-tests/e2e/.gitkeep`
 - `auto-tests/api/.gitkeep`
 - `auto-tests/load/.gitkeep`
-- `.claude/` — harness 安装点(参考 AI--First-Coding-Loop-CC 结构复制)
+- `.claude/` — harness 安装点（从 AI--First-Coding-Loop-CC 复制）
 
 ---
 
@@ -97,14 +96,24 @@ Thumbs.db
 graphifyy>=0.8.0
 ```
 
-- [ ] **Step 4: 创建 `Makefile`**
+- [ ] **Step 4: 创建根级 `Makefile`（委托层）**
 
 ```makefile
-.PHONY: setup check help
+.PHONY: setup check help infra-up \
+        services-verify services-proto services-db services-fmt \
+        web-dev web-test web-typecheck
 
 help:
-	@echo "make setup  — 安装开发依赖 + graphify + git hooks"
-	@echo "make check  — 运行所有检查"
+	@echo "make setup            — 安装所有依赖（services + web + graphify）"
+	@echo "make check            — 全量检查（services verify + web typecheck + web test）"
+	@echo "make infra-up         — 启动本地基础设施（Postgres、Kafka、Redis 等）"
+	@echo "make services-verify  — Go fmtcheck + vet + lint + test -race"
+	@echo "make services-proto   — buf lint + buf generate"
+	@echo "make services-db      — sqlc generate"
+	@echo "make services-fmt     — gofmt -w"
+	@echo "make web-dev          — pnpm dev"
+	@echo "make web-test         — pnpm test"
+	@echo "make web-typecheck    — pnpm typecheck"
 
 setup:
 	@echo "==> 安装 Python 开发依赖..."
@@ -113,33 +122,79 @@ setup:
 	graphify claude install
 	@echo "==> 安装 graphify git hooks..."
 	graphify hook install
-	@echo "==> setup 完成"
+	@echo "==> setup 完成（Go/Node 依赖由各子目录自行管理）"
 
-check:
-	@echo "==> 检查 graphify 安装..."
-	graphify --version
-	@echo "==> 检查 git hooks..."
-	test -f .git/hooks/post-commit && echo "post-commit hook: OK" || echo "post-commit hook: MISSING"
-	test -f .git/hooks/post-checkout && echo "post-checkout hook: OK" || echo "post-checkout hook: MISSING"
+check: services-verify web-typecheck web-test
+	@echo "==> 全量检查完成"
+
+infra-up:
+	docker compose -f docker-compose.local.yml up -d
+
+# --- Go 后端委托 ---
+services-verify:
+	$(MAKE) -C services verify
+
+services-proto:
+	$(MAKE) -C services proto
+
+services-db:
+	$(MAKE) -C services db
+
+services-fmt:
+	$(MAKE) -C services fmt
+
+# --- 前端委托 ---
+web-dev:
+	cd apps/web && pnpm dev
+
+web-test:
+	cd apps/web && pnpm test
+
+web-typecheck:
+	cd apps/web && pnpm typecheck
 ```
 
-- [ ] **Step 5: 验证 Makefile 语法**
+- [ ] **Step 5: 创建 `services/Makefile`（执行层）**
+
+```makefile
+.PHONY: verify proto db fmt build
+
+verify: fmt-check
+	go vet ./...
+	golangci-lint run ./...
+	go test -race -count=1 ./...
+
+proto:
+	go tool buf lint
+	go tool buf generate
+
+db:
+	sqlc generate
+
+fmt:
+	gofmt -w cmd internal
+
+fmt-check:
+	@out=$$(gofmt -l cmd internal); \
+	test -z "$$out" || { echo "需要 make fmt:"; echo "$$out"; exit 1; }
+
+build:
+	go build ./cmd/...
+```
+
+- [ ] **Step 6: 验证根级 Makefile 语法**
 
 ```bash
 make help
 ```
 
-期望输出:
-```
-make setup  — 安装开发依赖 + graphify + git hooks
-make check  — 运行所有检查
-```
+期望输出包含所有 target 说明（setup / check / services-* / web-*）。
 
-- [ ] **Step 6: 提交**
+- [ ] **Step 7: 提交**
 
 ```bash
-git add Makefile requirements-dev.txt .gitignore
-git commit -m "chore: init repo with build setup and gitignore"
+git add Makefile services/Makefile requirements-dev.txt .gitignore
+git commit -m "chore: init repo with delegating Makefile and gitignore"
 ```
 
 ---
@@ -148,40 +203,78 @@ git commit -m "chore: init repo with build setup and gitignore"
 
 **Files:**
 - Create: `apps/web/.gitkeep`
-- Create: `services/{api,matching-engine,indexer,sdk}/.gitkeep`
+- Create: `services/cmd/{api,matching-engine,indexer}/.gitkeep`
+- Create: `services/internal/services/{api,matching-engine,indexer}/.gitkeep`
+- Create: `services/internal/shared/.gitkeep`
+- Create: `services/api/proto/.gitkeep`, `services/api/gen/.gitkeep`
+- Create: `services/migrations/.gitkeep`
 - Create: `auto-tests/{e2e,api,load}/.gitkeep`
 - Create: `docs/specs/.gitkeep`, `docs/plans/.gitkeep`
-- Create: `docs/test-cases/{web,api,matching-engine,indexer,sdk}/.gitkeep`
+- Create: `docs/test-cases/{web,api,matching-engine,indexer}/.gitkeep`
 
-- [ ] **Step 1: 创建所有目录和占位文件**
+- [ ] **Step 1: 创建前端 + 自动化测试目录**
 
 ```bash
-# 服务目录
 mkdir -p apps/web
-mkdir -p services/{api,matching-engine,indexer,sdk}
 touch apps/web/.gitkeep
-touch services/api/.gitkeep services/matching-engine/.gitkeep
-touch services/indexer/.gitkeep services/sdk/.gitkeep
 
-# 自动化测试目录
 mkdir -p auto-tests/{e2e,api,load}
 touch auto-tests/e2e/.gitkeep auto-tests/api/.gitkeep auto-tests/load/.gitkeep
-
-# 文档子目录
-mkdir -p docs/{architecture,modules,api,data-model,specs,plans,feature-list}
-mkdir -p docs/changelogs/{web,api,matching-engine,indexer,sdk}
-mkdir -p docs/test-cases/{web,api,matching-engine,indexer,sdk}
-touch docs/specs/.gitkeep docs/plans/.gitkeep
-touch docs/test-cases/{web,api,matching-engine,indexer,sdk}/.gitkeep
 ```
 
-- [ ] **Step 2: 验证结构**
+- [ ] **Step 2: 创建 Go 后端 hexagonal 目录结构**
+
+```bash
+# 各服务 main 入口
+mkdir -p services/cmd/{api,matching-engine,indexer}
+touch services/cmd/api/.gitkeep services/cmd/matching-engine/.gitkeep services/cmd/indexer/.gitkeep
+
+# 各微服务实现（hexagonal: domain/ ports/ adapters/ app/ bootstrap/）
+mkdir -p services/internal/services/{api,matching-engine,indexer}
+touch services/internal/services/api/.gitkeep
+touch services/internal/services/matching-engine/.gitkeep
+touch services/internal/services/indexer/.gitkeep
+
+# 跨服务共享包
+mkdir -p services/internal/shared
+touch services/internal/shared/.gitkeep
+
+# Protobuf 定义 + 生成代码
+mkdir -p services/api/proto services/api/gen
+touch services/api/proto/.gitkeep services/api/gen/.gitkeep
+
+# DB 迁移
+mkdir -p services/migrations
+touch services/migrations/.gitkeep
+```
+
+- [ ] **Step 3: 初始化 Go module**
+
+```bash
+cd services
+go mod init <your-module-name>   # 例: go mod init github.com/org/project
+cd ..
+```
+
+期望：`services/go.mod` 存在，内容包含 `module` 和 `go` 行。
+
+- [ ] **Step 4: 创建文档子目录**
+
+```bash
+mkdir -p docs/{architecture,modules,api,data-model,specs,plans}
+mkdir -p docs/changelogs/{web,api,matching-engine,indexer}
+mkdir -p docs/test-cases/{web,api,matching-engine,indexer}
+touch docs/specs/.gitkeep docs/plans/.gitkeep
+touch docs/test-cases/{web,api,matching-engine,indexer}/.gitkeep
+```
+
+- [ ] **Step 5: 验证结构**
 
 ```bash
 find . -not -path './.git/*' -type d | sort
 ```
 
-期望输出包含:
+期望输出包含：
 ```
 ./apps/web
 ./auto-tests/api
@@ -192,7 +285,6 @@ find . -not -path './.git/*' -type d | sort
 ./docs/changelogs/api
 ./docs/changelogs/indexer
 ./docs/changelogs/matching-engine
-./docs/changelogs/sdk
 ./docs/changelogs/web
 ./docs/data-model
 ./docs/modules
@@ -201,19 +293,24 @@ find . -not -path './.git/*' -type d | sort
 ./docs/test-cases/api
 ./docs/test-cases/indexer
 ./docs/test-cases/matching-engine
-./docs/test-cases/sdk
 ./docs/test-cases/web
-./services/api
-./services/indexer
-./services/matching-engine
-./services/sdk
+./services/api/gen
+./services/api/proto
+./services/cmd/api
+./services/cmd/indexer
+./services/cmd/matching-engine
+./services/internal/services/api
+./services/internal/services/indexer
+./services/internal/services/matching-engine
+./services/internal/shared
+./services/migrations
 ```
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
 git add .
-git commit -m "chore: scaffold mono-repo directory structure"
+git commit -m "chore: scaffold mono-repo directory structure with hexagonal Go layout"
 ```
 
 ---
@@ -397,88 +494,63 @@ git commit -m "docs: add initial document templates for all services"
 
 ---
 
-## Task 4: 创建 CLAUDE.md
+## Task 4: 安装 harness + 生成 CLAUDE.md
+
+> CLAUDE.md **不手写**。从 AI--First-Coding-Loop-CC 的 `CLAUDE.md.template` 复制后填入项目占位符。
+> harness（`.claude/` 目录）同样从该仓库复制。
 
 **Files:**
-- Create: `CLAUDE.md`
+- Create: `CLAUDE.md`（从模板复制）
+- Create: `.claude/`（从 harness 复制）
 
-- [ ] **Step 1: 创建 `CLAUDE.md`**
-
-```markdown
-# CLAUDE.md
-
-## 知识图谱(必读)
-
-每次 session 开始时,先读 `graphify-out/GRAPH_REPORT.md` 了解代码库的 god nodes 和服务社区结构。
-
-在使用 Grep/Glob 搜索文件之前,先通过知识图谱导航:
-- 宏观结构 → 读 `graphify-out/GRAPH_REPORT.md`
-- 具体路径查询 → `/graphify path <source> <target>`
-- 影响范围分析 → `/graphify query "哪些模块依赖 <file>?"`
-
-## 项目结构
-
-```
-apps/web/               — 前端应用
-services/api/           — API 网关
-services/matching-engine/ — 撮合引擎
-services/indexer/       — 索引器
-services/sdk/           — 共享 SDK
-docs/                   — 共享文档库
-auto-tests/             — 自动化测试
-```
-
-## 分支命名规范
-
-```
-<type>/<service>/<short-desc>
-
-feat/api/add-jwt-refresh
-fix/matching-engine/order-fill-race
-```
-
-type: feat | fix | refactor | docs | chore | test
-service: web | api | matching-engine | indexer | sdk
-
-## Commit 格式
-
-```
-<type>(<service>): <短描述>
-feat(api): add JWT refresh endpoint
-```
-
-## PR 工作流
-
-开发完成后,在生成 PR 草稿前必须同步以下文档(按改动类型):
-- 改了接口 → `docs/api/<service>.md`
-- 改了 DB 表 → `docs/data-model/<service>.md`
-- 改了功能行为 → `docs/modules/<service>.md`
-- 任意功能变更 → `docs/feature-list.md`、`docs/changelogs/<service>/CHANGELOG.md`
-- 有可测功能 → `docs/test-cases/<service>/`
-
-PR 描述必须包含以下 sections:
-`## 功能点` / `## 影响范围` / `## 测试用例` / `## Breaking Changes` / `## 迁移步骤` / `## Rollback 方案`
-
-## 文档职责分工
-
-- `docs/architecture/` — 手写,记录战略决策(不描述代码结构)
-- `docs/modules/<service>.md` — 手写,只写"为什么",代码结构由图谱负责
-- `graphify-out/GRAPH_REPORT.md` — 自动生成,描述代码实际结构
-```
-
-- [ ] **Step 2: 验证 CLAUDE.md 可读**
+- [ ] **Step 1: 复制 harness 目录**
 
 ```bash
-wc -l CLAUDE.md
+# 假设 AI--First-Coding-Loop-CC 已 clone 到 ~/harness（或调整为实际路径）
+HARNESS=~/harness/AI--First-Coding-Loop-CC
+
+cp -r "$HARNESS/claude-code/." .claude/
 ```
 
-期望:行数 > 40。
+期望：`.claude/skills/`、`.claude/agents/`、`.claude/settings/` 等目录存在。
 
-- [ ] **Step 3: 提交**
+- [ ] **Step 2: 复制 CLAUDE.md.template 作为初始 CLAUDE.md**
 
 ```bash
-git add CLAUDE.md
-git commit -m "docs: add CLAUDE.md with project conventions and graphify rules"
+cp "$HARNESS/claude-code/CLAUDE.md.template" CLAUDE.md
+```
+
+- [ ] **Step 3: 填入项目占位符**
+
+打开 `CLAUDE.md`，搜索所有 `[...]` 占位符并替换：
+
+| 占位符 | 填写内容 |
+|--------|---------|
+| `[一句话：产品是什么...]` | 本项目的一句话描述 |
+| `[填写，如 1.26]` | 实际 Go 版本（与 `services/go.mod` 一致） |
+| `[按本仓技术栈替换上方占位]` | 删除占位注释，确认命令与本仓一致 |
+
+- [ ] **Step 4: 验证 CLAUDE.md 无遗留占位符**
+
+```bash
+grep -n '\[.*\]' CLAUDE.md
+```
+
+期望：无输出（或仅剩合理的示例文本，不是待填项）。
+
+- [ ] **Step 5: 验证 skill 目录结构**
+
+```bash
+ls .claude/skills/
+```
+
+期望包含：`financial-numerics`、`go-logging`、`go-error-handling`、`go-observability`、`changelog-output`、`api-doc-output`、`data-model-output` 等。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add CLAUDE.md .claude/
+git commit -m "chore: install harness and initialize CLAUDE.md from template"
 ```
 
 ---
