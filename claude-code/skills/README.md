@@ -30,6 +30,10 @@
 | `testing-standards` | 测试覆盖与质量 | implementer / review |
 | `api-doc-output` | 改接口同步产出 docs/api | implementer |
 | `data-model-output` | 改数据模型同步产出 docs/data-model | implementer |
+| `go-logging` | Go slog 结构化日志规范（禁 zap、风暴防护、脱敏） | implementer / review |
+| `go-error-handling` | Go 错误处理（哨兵错误、errors.Is/As、资金保护模式） | implementer / review |
+| `go-observability` | Go 可观测性（OTel span + Prometheus 埋点位置） | implementer |
+| `changelog-output` | 任意功能变更后产出 CHANGELOG 条目 | implementer |
 
 ## SKILL.md 写法约定
 

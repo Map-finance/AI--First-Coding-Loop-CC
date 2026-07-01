@@ -34,6 +34,7 @@ jobs:
     outputs:
       node: ${{ steps.filter.outputs.node }}
       go: ${{ steps.filter.outputs.go }}
+      proto: ${{ steps.filter.outputs.proto }}
       python: ${{ steps.filter.outputs.python }}
     steps:
       - uses: actions/checkout@v4
@@ -42,14 +43,20 @@ jobs:
         with:
           filters: |
             node:
-              - 'apps/**/*.{ts,tsx,js,jsx}'
+              - 'apps/web/**/*.{ts,tsx,js,jsx}'
+              - 'apps/web/package.json'
+              - 'apps/web/pnpm-lock.yaml'
               - 'packages/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
             go:
-              - 'services/**/*.go'
-              - 'go.mod'
-              - 'go.sum'
+              - 'server/**/*.go'
+              - 'server/go.mod'
+              - 'server/go.sum'
+              # 兼容旧路径：若项目用 services/ 而非 server/，在此追加
+              # - 'services/**/*.go'
+            proto:
+              - 'server/api/proto/**/*.proto'
+              - 'server/buf.yaml'
+              - 'server/buf.gen.yaml'
             python:
               - 'services/**/*.py'
               - 'pyproject.toml'
@@ -78,24 +85,64 @@ jobs:
         run: pnpm -r test:unit --coverage
 
   # ---------------------------------------------------------------------------
-  # Go:vet + lint + 单测(-race)
+  # Go:fmt 检查 + vet + lint + 单测(-race)
+  # 路径：server/（若项目用其他路径，在 changes.filters.go 中修改）
   # ---------------------------------------------------------------------------
   go-quality:
     needs: changes
     if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server   # mono-repo 下 Go 代码在 server/ 子目录
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: server/go.mod   # 从 go.mod 读取版本，不硬编码
           cache: true
-      - run: go vet ./...
+          cache-dependency-path: server/go.sum
+      - name: Format check
+        run: |
+          out=$(gofmt -l cmd internal)
+          test -z "$out" || { echo "需要 make fmt:"; echo "$out"; exit 1; }
+      - name: Vet
+        run: go vet ./...
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          working-directory: server
       - name: Unit tests
         run: go test -race -count=1 ./...
+
+  # ---------------------------------------------------------------------------
+  # Proto：buf lint + buf generate，检查生成代码已提交
+  # ---------------------------------------------------------------------------
+  proto-quality:
+    needs: changes
+    if: needs.changes.outputs.proto == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+      - name: buf lint
+        run: go tool buf lint
+      - name: buf generate
+        run: go tool buf generate
+      - name: Check generated code committed
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::生成代码未提交，请本地运行 make proto 后提交"
+            git diff --stat
+            exit 1
+          fi
 
   # ---------------------------------------------------------------------------
   # Python:类型检查(mypy)+ lint(ruff)+ 单测(pytest)
@@ -201,7 +248,7 @@ jobs:
   # 任意上游失败 → 红。这样不必在分支保护里逐个勾选 job。
   # ---------------------------------------------------------------------------
   ci-gate:
-    needs: [node-quality, go-quality, python-quality, integration, docker-build, e2e, env-parity]
+    needs: [node-quality, go-quality, proto-quality, python-quality, integration, docker-build, e2e, env-parity]
     if: always()
     runs-on: ubuntu-latest
     steps:

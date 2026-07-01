@@ -34,21 +34,61 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 >   │   └── frontend/<module>/{design,api}.md
 > 跨前后端/跨服务共享的接口、类型、契约放在 **docs-repo 的 `contracts/`**,本仓经 `docs/` submodule 引用,**不要在本仓复制**。
 
+## Session 开始必读
+
+每次进入项目后，按顺序执行：
+1. **读 `graphify-out/GRAPH_REPORT.md`**（若存在）— 了解 god nodes、服务社区、意外依赖（~2-5k token，读一次）
+2. **读本文件** — 确认当前技术栈和命令
+3. **按需读 skill** — 根据任务类型，参考下方"规范 skill 强制加载"表
+
 ## 本地开发(agent 必须能复现这些命令)
-> ⚠️ 下面命令按**本仓技术栈**填(不同语言完全不同),务必填成本仓真实可跑的命令——CI 门禁与 AI 评审都依赖"能一键跑测试"。
-- 安装依赖:`[按本仓填,如 pnpm install / go mod download / pip install -r requirements.txt / cargo fetch]`
-- 起服务:`[如 make dev / npm run dev / docker compose up / go run ./cmd/...]`
-- 跑测试:`[如 make test / npm test / go test ./... / pytest]`(关键路径需有集成/E2E 测试)
-- 类型检查/lint:`[如 make check / npm run lint / golangci-lint run / ruff check]`
-- **提交前自检入口**(pre-commit hook 会调它):定义一个 `precommit` 入口——Makefile 的 `precommit:` 目标 或 package.json 的 `scripts.precommit`,内容 = lint + 类型检查 + 改动文件单测(按本仓技术栈填)。hook 通用,命令落这里。
+
+> ⚠️ 下面命令按**本仓技术栈**填(不同语言完全不同)，务必填成本仓真实可跑的命令——CI 门禁与 AI 评审都依赖"能一键跑测试"。
+
+### 单仓（Go 后端 + React 前端）参考模板
+
+```bash
+# 全局
+make setup          # 安装所有依赖（server + web + graphify）
+make check          # 全量检查（server verify + web typecheck + web test）
+make infra-up       # 启动本地基础设施（Postgres、Kafka、Redis 等）
+
+# 后端 (server/)
+make server-verify  # fmtcheck + build + go test ./... (委托 cd server && make verify)
+make server-proto   # buf lint + buf generate
+make server-db      # sqlc generate
+
+# 前端 (apps/web/)
+make web-dev        # pnpm dev
+make web-test       # pnpm test
+make web-typecheck  # pnpm typecheck
+
+# [按本仓技术栈替换上方占位]
+```
+
+**提交前自检入口**（pre-commit hook 调用）：Makefile 的 `precommit:` 目标，内容 = lint + 类型检查 + 改动文件单测。
 
 ## 编码规范
-- 语言版本:[Node 20 / Go 1.22 / Python 3.12]
-- 格式化:[prettier / gofmt / ruff format] — 提交前必跑,CI 会校验。
-- 错误处理:[约定,例如:服务边界返回结构化错误,日志用结构化字段不打印 PII]
-- 日志:**所有服务输出结构化日志**(JSON),字段含 `service`、`request_id`、`level`。
-  自愈环依赖这些字段做聚类——不结构化,triage 引擎就看不懂。
-- 测试:新代码必须带测试;关键路径必须有集成测试。
+
+### 后端（Go）
+- Go 版本：[填写，如 1.26]，`go.toolchain` 锁定，不得随意升级
+- 格式化：`gofmt`（`make server-fmt`），提交前必跑，CI 会校验
+- 架构：hexagonal（domain / ports / adapters / app / bootstrap），禁止跨层直接调用
+- 错误处理：哨兵错误 + `errors.Is/As`，资金操作错误绝不吞 → 见 `go-error-handling` skill
+- 日志：只用 `log/slog`，禁 zap/zerolog/fmt.Print* → 见 `go-logging` skill
+- ID：跨服务主键用 ULID（`oklog/ulid/v2`），禁自增 int ID 跨服务引用
+- 测试：新代码必须带测试；关键路径（资金/结算）必须有集成测试（`-race` flag）
+
+### 前端（React）
+- TypeScript strict mode，禁 `any`
+- 函数组件 + hooks，禁 class component
+- 金额展示：API 返回 `string` 类型的金额，用 `formatTokenAmount(str, decimals)` 展示，**禁止前端做浮点运算**
+- 格式化：prettier，提交前必跑
+- 测试：组件测试 + 关键业务逻辑单测
+
+### 通用
+- 日志：结构化（JSON），字段含 `service`、`request_id`、`level`；自愈环依赖这些字段做聚类
+- 测试：新代码必须带测试；关键路径必须有集成/E2E 测试
 
 ## 安全禁区(BLOCK 级,评审会拦)
 - 不得硬编码密钥/token;用环境变量 + secrets。
@@ -90,15 +130,38 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 新增 skill:在 `skills/` 下建目录,登记到 `skills/README.md`。
 
 #### 规范 skill 强制加载（开发与评审的共同底线）
+
 任何 agent 在以下情形**必须先 Read 对应 skill 再动手**（不是"自觉"，是硬规则）：
-- 涉及 SQL/ORM/迁移 → `sql-optimization`
-- 外部调用/并发/缓存/日志/监控 → `performance-review`
-- 处理用户输入/鉴权/密钥/序列化 → `secure-coding`
-- 金额/价格/余额/交易 → `financial-numerics`
-- 改接口 → `api-doc-output`；改数据模型 → `data-model-output`
-- 任何改动的底线：`clean-code` + `testing-standards` + 新功能 `feature-flag-setup`
+
+| 情形 | 必须先读 skill |
+|------|--------------|
+| 涉及金额/价格/余额/token 数量 | `financial-numerics` |
+| 涉及 Go 日志输出 | `go-logging` |
+| 涉及 Go 错误处理/资金操作 | `go-error-handling` |
+| 新增服务/外部调用/请求链路 | `go-observability` |
+| 涉及 SQL/ORM/DB 迁移 | `sql-optimization` |
+| 外部调用/并发/缓存/监控 | `performance-review` |
+| 处理用户输入/鉴权/密钥/序列化 | `secure-coding` |
+| 改 HTTP/RPC 接口 | `api-doc-output` |
+| 改 DB 表结构/字段 | `data-model-output` |
+| 任意功能变更完成后（PR 前） | `changelog-output` |
+| 任何改动的底线 | `clean-code` + `testing-standards` |
+| 新功能 | 额外加 `feature-flag-setup` |
+| 前端展示金额 | `financial-numerics`（前端部分） |
 
 这些 skill 同时被 PR 的 AI 评审引用（见 `.github/workflows/ai-review.yml`）。开发期漏掉的，评审期会拦。
+
+#### 文档同步义务（PR 前必须完成）
+
+| 改动类型 | 必须同步更新 |
+|---------|------------|
+| 新增/修改 HTTP/RPC 接口 | `docs/api/<service>.md` |
+| 新增/修改 DB 表/字段/索引 | `docs/data-model/<service>.md` |
+| 新增/修改功能模块行为 | `docs/modules/<service>.md` + `docs/feature-list.md` |
+| 任意功能变更 | `docs/changelogs/<service>/CHANGELOG.md` |
+| 有可测试功能 | `docs/test-cases/<service>/` |
+
+**所有相关文档必须在同一 PR 里更新，不允许单独补提。**
 
 ### Sub-agents(`agents/<name>.toml`)
 角色化的 agent + 模型分层:`explorer`(Haiku)/`implementer`(Sonnet)/三类 `verifier`(分层)/
