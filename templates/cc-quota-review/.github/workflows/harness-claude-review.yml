@@ -1,0 +1,153 @@
+# =============================================================================
+# 三重 AI 代码评审 v2 — 模型分层 + sub-agent 角色化
+# -----------------------------------------------------------------------------
+# 关键升级(对比 v1):
+#   - 三趟评审用 *三种* 不同模型,而不是同一个 Opus 跑三次
+#   - 模型/推理参数从 agents/*.toml 集中读取,改一处即可全局生效
+#   - quality 趟由 Sonnet/medium 跑、security 趟升级到 Opus/high、dependency 趟降到 Haiku/low
+#   - 单 PR Anthropic 月费预估下降 40~60%,同时 security 评审反而更深
+#
+# 关键不变:
+#   - 仍是"门禁"不是"建议":任一趟 BLOCK = 合不进
+#   - 仍三趟并行,人类只看战略风险
+#   - 提示词仍在 prompts/*.md(版本化、可迭代)
+# =============================================================================
+name: AI Review (3 passes, tiered)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  quality:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Load prompt
+        run: |
+          {
+            echo 'REVIEW_PROMPT<<__PROMPT_EOF__'
+            cat .harness/prompts/review-quality.md
+            echo '__PROMPT_EOF__'
+          } >> "$GITHUB_ENV"
+      - name: Pass 1 — Code Quality (Sonnet)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Use the workflow's own GITHUB_TOKEN so the action does NOT depend on
+          # the Claude Code GitHub App being installed on this org/repo (the OIDC
+          # app-token exchange otherwise fails with "Claude Code is not installed"
+          # on org/repos that haven't installed it). permissions: pull-requests:write
+          # below grants the scope needed to post review comments.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ env.REVIEW_PROMPT }}
+          claude_args: |
+            --model claude-sonnet-4-6
+            --allowedTools "Read,Grep,Glob"
+      - name: Record token usage
+        if: always()
+        run: |
+          mkdir -p .harness/state
+          echo "{\"ts\":\"$(date -uIs)\",\"loop\":\"ai-review\",\"role\":\"verifier-quality\",\"model\":\"claude-sonnet-4-6\",\"pr\":${{ github.event.pull_request.number }}}" \
+            >> .harness/state/token-usage.jsonl
+
+  security:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Load prompt
+        run: |
+          {
+            echo 'REVIEW_PROMPT<<__PROMPT_EOF__'
+            cat .harness/prompts/review-security.md
+            echo '__PROMPT_EOF__'
+          } >> "$GITHUB_ENV"
+      - name: Pass 2 — Security (Opus)  ← 这一档值得最贵的模型
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Use the workflow's own GITHUB_TOKEN so the action does NOT depend on
+          # the Claude Code GitHub App being installed on this org/repo (the OIDC
+          # app-token exchange otherwise fails with "Claude Code is not installed"
+          # on org/repos that haven't installed it). permissions: pull-requests:write
+          # below grants the scope needed to post review comments.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ env.REVIEW_PROMPT }}
+          claude_args: |
+            --model claude-opus-4-8
+            --allowedTools "Read,Grep,Glob"
+      - name: Record token usage
+        if: always()
+        run: |
+          mkdir -p .harness/state
+          echo "{\"ts\":\"$(date -uIs)\",\"loop\":\"ai-review\",\"role\":\"verifier-security\",\"model\":\"claude-opus-4-8\",\"pr\":${{ github.event.pull_request.number }}}" \
+            >> .harness/state/token-usage.jsonl
+
+  dependency:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Collect dependency diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD -- \
+            '**/package.json' 'pnpm-lock.yaml' 'go.mod' 'go.sum' \
+            'requirements*.txt' 'pyproject.toml' > dep.diff || true
+      - name: Load prompt
+        run: |
+          {
+            echo 'REVIEW_PROMPT<<__PROMPT_EOF__'
+            cat .harness/prompts/review-dependency.md
+            echo '__PROMPT_EOF__'
+          } >> "$GITHUB_ENV"
+      - name: Pass 3 — Dependency (Haiku)  ← 形态简单,便宜模型够用
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Use the workflow's own GITHUB_TOKEN so the action does NOT depend on
+          # the Claude Code GitHub App being installed on this org/repo (the OIDC
+          # app-token exchange otherwise fails with "Claude Code is not installed"
+          # on org/repos that haven't installed it). permissions: pull-requests:write
+          # below grants the scope needed to post review comments.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: ${{ env.REVIEW_PROMPT }}
+          claude_args: |
+            --model claude-haiku-4-5-20251001
+            --allowedTools "Read,Grep"
+      - name: Record token usage
+        if: always()
+        run: |
+          mkdir -p .harness/state
+          echo "{\"ts\":\"$(date -uIs)\",\"loop\":\"ai-review\",\"role\":\"verifier-dependency\",\"model\":\"claude-haiku-4-5-20251001\",\"pr\":${{ github.event.pull_request.number }}}" \
+            >> .harness/state/token-usage.jsonl
+
+  ai-review-gate:
+    needs: [quality, security, dependency]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce all passes
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "AI review results: $results"
+          for r in $results; do
+            if [ "$r" = "failure" ]; then
+              echo "::error::AI review gate failed — 见 PR 评论中三趟评审的 BLOCK 项。"; exit 1
+            fi
+          done
+          echo "✅ AI review gate green."

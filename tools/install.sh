@@ -97,6 +97,12 @@ safe_cp "$SOURCE_DIR/core/state/known-flakes.txt" "$TARGET/${PREFIX}state/known-
 mkdir -p "$TARGET/${PREFIX}state/tasks" && touch "$TARGET/${PREFIX}state/tasks/.gitkeep"
 ok "+ state/tasks/.gitkeep"
 
+# v2.4: PR 模板(自动出现在每个新 PR 描述里)
+if [ -f "$SOURCE_DIR/.github/pull_request_template.md" ]; then
+  safe_cp "$SOURCE_DIR/.github/pull_request_template.md" \
+          "$TARGET/${PREFIX}.github/pull_request_template.md"
+fi
+
 # === claude-code(skills + agents)===
 if [ "$NO_SKILLS" = "0" ]; then
   say "claude-code/ → $TARGET/$CC_DIR/"

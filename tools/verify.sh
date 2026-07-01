@@ -48,8 +48,12 @@ for prov in anthropic openai deepseek; do
 done
 
 # 5. YAML / TOML 健全性
-if python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]" 2>/dev/null; then
-  ok "5 个 workflow YAML 合法"
+# pyyaml 不是 stdlib —— 干净机器(系统 python3)往往没装。区分两种情况:
+# import 失败 = 缺依赖,跳过不算失败;解析失败 = YAML 真的非法,才 bad。
+if ! python3 -c "import yaml" 2>/dev/null; then
+  ok "(未装 pyyaml,跳过 workflow YAML 校验 —— pip install pyyaml 可启用)"
+elif python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]" 2>/dev/null; then
+  ok "workflow YAML 合法"
 else
   bad "workflow YAML 解析失败"
 fi

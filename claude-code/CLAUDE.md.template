@@ -1,9 +1,46 @@
-# CLAUDE.md — 单仓根上下文(agent 的常驻地图)
+# CLAUDE.md — 单仓根上下文(agent 的常驻地图,v2.6)
 
 > 单仓(mono-repo)：前端 + 后端多微服务 + 自动化测试 + 文档，全在一个仓库。
-> 任何 agent 进入项目后，**先读本文件 → 读 graphify-out/GRAPH_REPORT.md → 按需读相关 skill**。
+> **v2.1**：模型无关——支持 Anthropic / OpenAI / DeepSeek / Qwen / Kimi / GLM 等任意厂商，切厂商只需 `LLM_PROVIDER` + `LLM_API_KEY`（详见 `docs/多模型适配.md`）。
+> **v2.4**：agent 写码行为纪律（Karpathy adapted）——任何 agent 动手前**必读** `skills/agent-coding-discipline/SKILL.md`。
+> **v2.6**：并行优先——主 session 收到需求先判断能否并行分解。
+> 任何 agent 进入项目后，按顺序：**读本文件 → 读 agent-coding-discipline → 读 graphify-out/GRAPH_REPORT.md → 按需读相关任务 skill**。
 > 目标：全新 agent 只读本文件 + 本仓，就能独立完成一个跨服务改动并让测试通过。
 > 把方括号 `[...]` 占位换成本仓真实内容，随架构演进持续更新。
+
+---
+
+## 🛑 强制行为纪律(动手前必读)
+
+**任何写码 agent**(implementer / explorer / verifier-quality 等)**动手前**,必须先吃这份:
+- [`skills/agent-coding-discipline/SKILL.md`](skills/agent-coding-discipline/SKILL.md) — 10 条规则 + 4 个失败模式 + 8 项 pre-submit 自检
+
+## 🛑 并行优先原则(v2.6,主 session 必读)
+
+**主 session 收到任何"加 X / 改 Y / 实现 Z"的需求,第一件事不是写码,而是判断"能不能并行分解"。**
+
+- 先调 [`skills/task-decomposer/SKILL.md`](skills/task-decomposer/SKILL.md) 决策并出 DAG
+- 可并行 → 调 [`skills/parallel-orchestrator/SKILL.md`](skills/parallel-orchestrator/SKILL.md) 用 Task tool **一条消息派 N 个子 agent 真并行**
+- 串行 → 直接走 architect-task-writer + implementer
+
+**默认保守**:有疑虑就串行(并行错的代价 ≫ 串行慢)。但对真正可分的任务(N 个独立 provider / 微服务、各自独立的功能模块)**一定要并行,不要傻串行**——这是 v2.6 对"v2.5 比 v2.2 慢"问题的核心解答。
+
+简版(贴墙):
+
+1. **读再写** —— 读完整文件,不要扫
+2. **想再做** —— 先说假设和 tradeoff
+3. **简单** —— 写眼前问题的最少代码
+4. **外科手术式** —— diff 像任务一样小;**不顺手 reformat**
+5. **fail-first 测试** —— 修 bug 先写失败的测试再修
+6. **goal-driven** —— 成功标准先于代码
+7. **debug 不靠猜** —— 读完整 stack、复现、一次只改一处
+8. **依赖永久** —— 标准库优先,加新依赖必说理由
+9. **沟通** —— 说做了什么、为什么、有什么顾虑;不确定的事**精确**说出来
+10. **持续推进** —— 没到需要人工决断前**不中断、一直往下推**;并行时只有卡到人工决断的那个子 session 停,其余照常继续;能自己定的小选择别抛给人(反面=空停)
+
+4 个失败模式(发现 = 停):Kitchen Sink / Wrong Abstraction / Optimistic Path / Runaway Refactor。
+
+PR 描述自动带 pre-submit checklist(见 `.github/pull_request_template.md`)。
 
 ---
 
@@ -116,6 +153,19 @@ make web-typecheck  # pnpm typecheck
 ## 部署(harness 不内置)
 - **部署高度项目特定(AWS/Vercel/k8s/Cloud Run 各不同),harness 不提供部署 workflow**,由各项目自行配置或交管理端。
 - agent 不应手动操作 prod;合并后的部署由各项目自己的流水线负责。
+
+## 🛑 合并与发布纪律(每次合并进 main 都要,强制)
+**任何 PR 合并进 `main` 后,必须立刻做这两件事,缺一不算完成:**
+1. **打 tag** —— 给这次合并打一个 git tag 并 push 到远端。命名按项目既有约定(语义化版本 `vX.Y.Z`,或日期 `vYYYY.MM.DD-N`)。tag 是**回滚锚点**。
+2. **写合并记录** —— 在 GitHub 基于该 tag 建一个 **Release**,正文写清这次合并**改了什么 / 为什么 / 影响面**(可由 PR 标题+描述生成)。Release 是**人能读的合并审计**。
+
+一条命令同时建 tag + Release:
+```bash
+gh release create <tag> --target main \
+  --title "<tag> — <一句话说明>" \
+  --notes "$(printf '改动:...\n原因:...\n影响面:...')"
+```
+> 铁律:**没打 tag、没写 Release 的合并 = 没合并完。** 不要直推 main 跳过 PR,也不要合了 PR 就走人。
 
 ## 给实现 agent 的工作约定
 1. **分支纪律(BLOCK 级):禁止直接 commit/push 到 `main`。** 任何改动必须:新建分支 → 提交 → 开 PR → 过门禁(ci-gate/ai-review-gate + 人工评审)→ 合并。

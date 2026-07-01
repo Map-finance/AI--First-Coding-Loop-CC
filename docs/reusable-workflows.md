@@ -1,5 +1,10 @@
 # Reusable Workflow:在别人的仓库里"一行调用"AI 评审
 
+> **先看一眼**:你是不是真的需要远端跑?如果只是**单人测试 / 不要 required check**,
+> 用 [`local_review.sh`](../core/scripts/local_review.sh) 在本地跑、吃 Claude Code 订阅,
+> 完全不付远端 API 钱。详见 [`local-vs-remote-review.md`](local-vs-remote-review.md)。
+> 下面这套是给"有多人协作 / 要 required check / 要审计 log"场景。
+
 > AI--First-Coding-Loop-CC 暴露了一个**GitHub Actions 可复用工作流**(`workflow_call`):
 > 任何 repo 在自己的 `.github/workflows/` 里写 4 行 `uses:` 就能拿到全套三趟 AI 评审,
 > **不需要拷贝任何文件、不需要 install.sh、未来升级只需改 ref**。

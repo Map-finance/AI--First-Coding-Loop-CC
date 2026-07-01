@@ -83,8 +83,11 @@ on:
         default: '320000'
     secrets:
       LLM_API_KEY:
-        description: '所选 provider 的 API key'
-        required: true
+        description: '所选 provider 的 API key；未设置时走 stub 路径'
+        required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'CC 会员 OAuth token(claude setup-token 生成)；设了就走 Anthropic Bearer,忽略 provider/LLM_API_KEY'
+        required: false
 
 permissions:
   contents: read
@@ -111,12 +114,14 @@ jobs:
         env:
           LLM_PROVIDER: ${{ inputs.provider }}
           LLM_API_KEY:  ${{ secrets.LLM_API_KEY }}
+          # v2.6: 配了 CC 会员 OAuth token 就走 Anthropic Bearer,忽略上面的 provider/key
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           LLM_BASE_URL: ${{ inputs.base_url }}
           LLM_MODEL: ${{ inputs.model_default }}
           LLM_MODEL_VERIFIER_QUALITY: ${{ inputs.model_quality }}
           AIFCL_PROMPTS_DIR: _aifcl/core/prompts
           AI_REVIEW_MAX_DIFF_CHARS: ${{ inputs.max_diff_chars }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF:  ${{ github.base_ref }}
         run: python3 _aifcl/core/scripts/ai_review.py --pass quality
@@ -139,12 +144,14 @@ jobs:
         env:
           LLM_PROVIDER: ${{ inputs.provider }}
           LLM_API_KEY:  ${{ secrets.LLM_API_KEY }}
+          # v2.6: 配了 CC 会员 OAuth token 就走 Anthropic Bearer,忽略上面的 provider/key
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           LLM_BASE_URL: ${{ inputs.base_url }}
           LLM_MODEL: ${{ inputs.model_default }}
           LLM_MODEL_VERIFIER_SECURITY: ${{ inputs.model_security }}
           AIFCL_PROMPTS_DIR: _aifcl/core/prompts
           AI_REVIEW_MAX_DIFF_CHARS: ${{ inputs.max_diff_chars }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF:  ${{ github.base_ref }}
         run: python3 _aifcl/core/scripts/ai_review.py --pass security
@@ -167,12 +174,14 @@ jobs:
         env:
           LLM_PROVIDER: ${{ inputs.provider }}
           LLM_API_KEY:  ${{ secrets.LLM_API_KEY }}
+          # v2.6: 配了 CC 会员 OAuth token 就走 Anthropic Bearer,忽略上面的 provider/key
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           LLM_BASE_URL: ${{ inputs.base_url }}
           LLM_MODEL: ${{ inputs.model_default }}
           LLM_MODEL_VERIFIER_DEPENDENCY: ${{ inputs.model_dependency }}
           AIFCL_PROMPTS_DIR: _aifcl/core/prompts
           AI_REVIEW_MAX_DIFF_CHARS: ${{ inputs.max_diff_chars }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF:  ${{ github.base_ref }}
         run: python3 _aifcl/core/scripts/ai_review.py --pass dependency

@@ -47,3 +47,14 @@ python3 scripts/ai_review.py --pass quality --mock
 python3 scripts/token_report.py --days 1 || echo "(空也 OK)"
 python3 scripts/comprehension_metrics.py --mock
 ```
+
+
+## v2.3 可选门禁
+
+额外 3 个 workflow(不在默认 ci-gate / ai-review-gate 里,按需 opt-in):
+
+- `workflows/perf-gate.yml` + `scripts/perf_check.py` + `scripts/perf-scenarios/` — k6 p95 vs baseline
+- `workflows/image-scan.yml` — Trivy fs + image 双扫
+- `workflows/secret-scan.yml` — gitleaks PR diff + 周一全仓深扫
+
+详细启用步骤见 [`../docs/optional-gates.md`](../docs/optional-gates.md)。

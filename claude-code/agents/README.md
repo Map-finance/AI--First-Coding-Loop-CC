@@ -30,7 +30,9 @@
 | name | 主要工具 | 模型 / 推理 | 典型触发 |
 |---|---|---|---|
 | explorer | Read/Grep/Glob | haiku / low | architect-task-writer 调用前先探查;pr-investigator 第 1 拍 |
-| implementer | Read/Write/Edit/Bash | sonnet / medium | 写实现代码 + 自带测试 |
+| implementer | Read/Write/Edit/Bash | sonnet / medium | 写实现代码 + 自带测试(单任务) |
+| **subtask-implementer** ★v2.6 | Read/Write/Edit/Bash | sonnet / medium | **并行多子任务之一**,worktree 隔离,禁 spawn 其他 agent |
+| **merger** ★v2.6 | Read/Bash(无 Write) | sonnet / medium | **整合 N 个 sub-agent 产出**,只 git merge + 跑测试,**不写业务代码** |
 | verifier-quality | Read/Grep | sonnet / medium | claude-review.yml 第 1 趟 |
 | verifier-security | Read/Grep | opus / high | claude-review.yml 第 2 趟 |
 | verifier-dependency | Read | haiku / low | claude-review.yml 第 3 趟 |

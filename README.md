@@ -5,6 +5,8 @@
 
 把任何新项目从「人在按提示」改造成「系统在按提示,人做架构与判断」——这个仓库提供完整的"骨架"。
 
+当前最新版本:**v2.6 — Parallel sub-agent orchestration**。
+
 ---
 
 ## 5 秒说清楚是什么
@@ -22,15 +24,15 @@
 ```
 AI--First-Coding-Loop-CC/
 ├── core/                 ★ 项目无关 + 模型无关 ★ 拷进任何仓库都能跑
-│   ├── scripts/             12 个 Python/Bash 脚本(自愈环 / 评审 / loop / token / 反认知投降)
-│   ├── workflows/           5 个 GitHub Actions YAML 模板
+│   ├── scripts/             14 个 Python/Bash 脚本(自愈环 / 评审 / loop / token / local review)
+│   ├── workflows/           8 个 GitHub Actions YAML 模板(含 secret/image/perf 可选门禁)
 │   ├── prompts/             4 份评审 + 任务 prompt(中文)
 │   ├── flags/               特性开关封装(Statsig + LocalProvider)
-│   └── state/               外置记忆的目录约定
+│   └── state/               外置记忆 + 并行编排状态目录约定
 │
 ├── claude-code/          🤖 Claude Code / Codex CLI 专属(SKILL + agent TOML)
-│   ├── skills/              6 个按域拆分的 skill(YAML front-matter,可被 $name 调用)
-│   ├── agents/              7 个 sub-agent TOML(explorer / implementer / 三类 verifier / triage-scorer / checker)
+│   ├── skills/              9 个按域拆分的 skill(含 task-decomposer / parallel-orchestrator)
+│   ├── agents/              9 个 sub-agent TOML(含 subtask-implementer / merger)
 │   └── CLAUDE.md.template   根上下文模板(拷到你的项目根)
 │
 ├── handoffs/             📋 接力包模板(给 Claude Code 等"代你执行"的助手)
@@ -53,17 +55,30 @@ AI--First-Coding-Loop-CC/
 
 ---
 
-## 三件事它能给你
+## 四件事它能给你
 
 1. **CI 门禁 + 三趟 AI 评审(模型无关)** — 一天部署多次也安全
 2. **每日自愈反馈环** — 错误自动检测 → 聚类 → 打分 → 建工单 → 修复后自动关单
 3. **反"认知投降"护栏** — 三项硬指标盯着架构师有没有真的在思考
+4. **并行 sub-agent 编排(v2.6)** — 大任务先拆分,多个子任务隔离执行,最后由 merger 汇总验收
 
 ---
 
-## 怎么用(三种姿势)
+## 怎么用(六种姿势)
 
-### 姿势 1:**拷贝**(最直接)
+### 姿势 0:**Local-only**(★ 起步 / 单人开发,$0,完全吃 Claude Code 订阅)
+
+不付远端 API 钱,push 前在本地用 Claude Code 跑三趟评审:
+
+```bash
+# 在你 push 前
+bash <(curl -sSL https://raw.githubusercontent.com/WILLcis/AI--First-Coding-Loop-CC/main/core/scripts/local_review.sh) --combined --copy
+# 输出已自动复制到剪贴板,贴进 Claude Code 一次跑完三趟
+```
+
+何时用:**单人开发、纯测试、不需要 required check**。详见 [`docs/local-vs-remote-review.md`](docs/local-vs-remote-review.md) 的 A/B/C 路线决策表。
+
+### 姿势 1:**拷贝**(全套自愈环,适合做主力 harness 的仓库)
 
 ```bash
 # 在你的目标仓库根目录
@@ -108,8 +123,19 @@ jobs:
     with:   { provider: openai, model_default: gpt-5.5 }
 ```
 
-**就这些**——下一个 PR 自动跑三趟评审,无需拷贝任何文件,本仓升级你 `@main` 改成 `@v2.3` 就跟上。
+**就这些**——下一个 PR 自动跑三趟评审,无需拷贝任何文件。生产仓建议把 `@main` 钉到最新稳定 tag,例如 `@v2.6`。
 完整参数、各厂商示例、与 install.sh 拷贝版的取舍,见 [`docs/reusable-workflows.md`](docs/reusable-workflows.md)。
+
+### 姿势 5:**Parallel Orchestration**(v2.6,大任务并行)
+
+当一个需求能拆成多个相对独立的文件/模块改动时,先用 `task-decomposer` 产出任务包,再由 `parallel-orchestrator` 分发给多个 `subtask-implementer`,最后交给 `merger` 做冲突整合与验收。
+
+配套状态目录在 [`core/state/orchestration/README.md`](core/state/orchestration/README.md)。Claude Code / Codex 项目安装本仓后,可直接按 skill 名调用:
+
+```text
+$task-decomposer      # 把大任务拆成可并行子任务
+$parallel-orchestrator # 分发、跟踪、收敛多个子任务
+```
 
 ---
 

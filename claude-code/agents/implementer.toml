@@ -8,8 +8,9 @@ tools = ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 max_iterations = 25
 
 prompt_skill = "architect-task-writer"   # 默认配合的 skill
-# 任何改动都强制挂载的规范底线（开发期"做对"）
-required_skills = ["feature-flag-setup", "secure-coding", "clean-code", "testing-standards"]
+# v2.4: agent-coding-discipline 在所有 implementer 任务前先读——10 条行为纪律(Karpathy adapted)
+# 其后是任何改动都强制挂载的规范底线（开发期"做对"）
+required_skills = ["agent-coding-discipline", "feature-flag-setup", "secure-coding", "clean-code", "testing-standards"]
 # 按改动内容由 description 自动触发：涉及 SQL→sql-optimization、外部调用→performance-review、
 # 金额→financial-numerics、接口→api-doc-output、数据模型→data-model-output 等
 optional_skills = [

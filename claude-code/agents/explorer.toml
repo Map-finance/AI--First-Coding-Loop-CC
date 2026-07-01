@@ -7,6 +7,8 @@ model = "claude-haiku-4-5-20251001"
 reasoning = "low"
 tools = ["Read", "Grep", "Glob"]
 max_iterations = 8
+# v2.4: 探查时遵循"读再写"——读完整文件而非只看片段
+required_skills = ["agent-coding-discipline"]
 # 典型用法:architect-task-writer 与 pr-investigator 调用,先把"相关文件清单"
 # 喂给后续的 implementer 或 verifier,避免它们用强模型做廉价工作。
 

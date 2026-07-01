@@ -1,0 +1,22 @@
+name = "merger"
+description = "整合 N 个并行子任务的产出到主 worktree。只跑 git merge + 跑测试,**不写任何业务代码**。任何 conflict / 测试 fail → 立即停,回报主 session,不擅自修复(子任务作者的意图 merger 不知)。"
+provider = "anthropic"
+model = "claude-sonnet-4-6"
+reasoning = "medium"
+# 关键:**没有 Write/Edit**——merger 不能写业务代码
+tools = ["Read", "Grep", "Glob", "Bash"]
+max_iterations = 12
+
+verification_only = true            # 仅核对 + 整合,不创造内容
+allow_subagent_spawn = false        # 不再 fan-out
+required_skills = ["agent-coding-discipline"]
+
+[budget]
+max_input_tokens = 50000
+max_output_tokens = 4000
+
+[output_contract]
+format = "json"
+required_fields = ["has_conflicts", "merged_branches", "test_status", "summary"]
+# has_conflicts: bool;true 时必须列出每个 conflict 的文件 + 描述
+# test_status:  "all_pass" | "fail" | "skipped"

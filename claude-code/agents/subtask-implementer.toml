@@ -1,0 +1,24 @@
+name = "subtask-implementer"
+description = "implementer 的窄域版,N 个并行子任务之一。在 git worktree 隔离里跑,严格只动 sub.scope 内文件,严禁触及 sub.no_touch 列表,严禁递归 spawn 其他 agent。返回结构化 JSON 给主 session 整合。"
+# 与 implementer 同档(主力写码),但被 parallel-orchestrator 拉起时自动加 isolation: worktree
+provider = "anthropic"
+model = "claude-sonnet-4-6"
+reasoning = "medium"
+# 关键:**不**含 Task / Agent 工具,防止递归 fan-out 爆炸
+tools = ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
+max_iterations = 20
+
+# v2.6 核心约束
+verification_only = false           # 可以写
+allow_subagent_spawn = false        # 严禁再调 Task / Agent,只能自己完成本子任务
+required_skills = ["agent-coding-discipline"]
+
+[budget]
+max_input_tokens = 60000
+max_output_tokens = 6000
+
+# 返回格式约定(主 session 解析时检查)
+[output_contract]
+format = "json"
+required_fields = ["status", "changed_files", "summary"]
+# status ∈ {"done", "blocked", "failed"}

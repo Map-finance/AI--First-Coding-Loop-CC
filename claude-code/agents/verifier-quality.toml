@@ -6,6 +6,8 @@ model = "claude-sonnet-4-6"
 reasoning = "medium"
 tools = ["Read", "Grep", "Glob"]
 prompt_file = "prompts/review-quality.md"
+# v2.4: 评审时按 10 条纪律 + 4 个失败模式扫问题
+required_skills = ["agent-coding-discipline"]
 
 [budget]
 max_input_tokens = 40000

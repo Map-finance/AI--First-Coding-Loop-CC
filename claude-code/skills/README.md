@@ -13,6 +13,9 @@
 
 | 名字 | 何时用 | 谁触发 |
 |---|---|---|
+| **`task-decomposer`** ★v2.6 | **主 session 收到需求第一件事**——判断可否并行分解,输出 DAG | 主 session |
+| **`parallel-orchestrator`** ★v2.6 | 拿 DAG 后用 Task tool 真并行 fan-out → fan-in → 整合 | 主 session |
+| **`agent-coding-discipline`** ★v2.4 | **任何写码 agent 动手前必读**(9 规则 + 4 失败模式 + 8 项 pre-submit) | 所有 implementer/explorer/verifier |
 | `architect-task-writer` | 把模糊想法变成结构化任务 prompt | 架构师 |
 | `pr-investigator` | 给 triage 自动工单做根因调查 | triage cron / 操作员 |
 | `feature-flag-setup` | 给新功能加一个完整 flag | implementer agent |

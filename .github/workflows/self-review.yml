@@ -1,0 +1,26 @@
+# 本仓用自己的 reusable workflow 评审自己的 PR——harness 哲学的字面体现。
+#
+# v2.6:云厂商 LLM 评审已停用,改用 CC 会员 OAuth token 直连 Anthropic。
+# 配套配置:
+#   secrets.CLAUDE_CODE_OAUTH_TOKEN   CC 会员跑 `claude setup-token` 生成,加成 repo secret
+#   未设置该 secret 时 ai_review 走 stub 路径(评审恒过、不阻塞),不会因缺 key 报错
+#
+# 想恢复云厂商评审:取消下面 provider/model_default 两行注释、配 secrets.LLM_API_KEY
+# + vars.LLM_PROVIDER/LLM_MODEL,并把 anthropic 那两行注释掉即可。
+name: Self Review
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    uses: WILLcis/AI--First-Coding-Loop-CC/.github/workflows/ai-review-reusable.yml@main
+    secrets: inherit          # 含 CLAUDE_CODE_OAUTH_TOKEN(若已配)
+    with:
+      # --- 云厂商 LLM 评审(暂时停用)---
+      # provider: ${{ vars.LLM_PROVIDER }}
+      # model_default: ${{ vars.LLM_MODEL }}
+      # --- CC 会员 OAuth token 评审(当前启用)---
+      provider: anthropic
+      model_default: claude-sonnet-4-6

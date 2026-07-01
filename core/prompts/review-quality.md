@@ -4,7 +4,7 @@
 (用 Read/Grep/Glob)来理解被改代码的上下文与跨服务影响。
 
 ## 你的任务
-只评审本 PR 的 diff,但要结合全仓上下文判断。聚焦三类问题:
+只评审本 PR 的 diff,但要结合全仓上下文判断。聚焦三类问题 + 4 个失败模式:
 
 1. **逻辑错误**:边界条件、空值/错误处理、并发竞态、off-by-one、错误的早返回、
    会破坏现有调用方的契约变更。
@@ -14,6 +14,11 @@
    与本仓既有规范(见根 CLAUDE.md)不一致之处。
 4. **特性开关(BLOCK 级)**:新增**对用户可见的行为**必须藏在 feature flag 后、默认 `false`(fail-safe)。
    无 flag、或默认 `true` → **BLOCK**(除非 PR 描述写明豁免理由)。这保住三条:灰度放量、指标恶化即时 kill(不重新部署)、开关系统异常时回退安全旧行为。
+5. **4 个写码失败模式**(见 skills/agent-coding-discipline/SKILL.md,**显式逐个扫**):
+   - **Kitchen Sink**:diff 文件数远超任务范围 / 顺手编辑无关代码 → BLOCK
+   - **Wrong Abstraction**:新加的抽象只被调用一次,没有第二个 caller → BLOCK 并要求 inline
+   - **Optimistic Path**:只有 happy path、错误 / 边界没处理 → BLOCK 并要求补
+   - **Runaway Refactor**:bug fix 改动跨越 > 5 个文件且改动间无直接因果 → BLOCK 并要求拆 PR
 
 ## 输出格式
 对每个发现给出:
