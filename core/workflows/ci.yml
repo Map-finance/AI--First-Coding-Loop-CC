@@ -48,15 +48,15 @@ jobs:
               - 'apps/web/pnpm-lock.yaml'
               - 'packages/**'
             go:
-              - 'server/**/*.go'
-              - 'server/go.mod'
-              - 'server/go.sum'
-              # 兼容旧路径：若项目用 services/ 而非 server/，在此追加
+              - 'services/**/*.go'
+              - 'services/go.mod'
+              - 'services/go.sum'
+              # 兼容旧路径：若项目用 services/ 而非 services/，在此追加
               # - 'services/**/*.go'
             proto:
-              - 'server/api/proto/**/*.proto'
-              - 'server/buf.yaml'
-              - 'server/buf.gen.yaml'
+              - 'services/api/proto/**/*.proto'
+              - 'services/buf.yaml'
+              - 'services/buf.gen.yaml'
             python:
               - 'services/**/*.py'
               - 'pyproject.toml'
@@ -86,7 +86,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Go:fmt 检查 + vet + lint + 单测(-race)
-  # 路径：server/（若项目用其他路径，在 changes.filters.go 中修改）
+  # 路径：services/（若项目用其他路径，在 changes.filters.go 中修改）
   # ---------------------------------------------------------------------------
   go-quality:
     needs: changes
@@ -94,14 +94,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: server   # mono-repo 下 Go 代码在 server/ 子目录
+        working-directory: services   # mono-repo 下 Go 代码在 services/ 子目录
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: server/go.mod   # 从 go.mod 读取版本，不硬编码
+          go-version-file: services/go.mod   # 从 go.mod 读取版本，不硬编码
           cache: true
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: services/go.sum
       - name: Format check
         run: |
           out=$(gofmt -l cmd internal)
@@ -111,7 +111,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          working-directory: server
+          working-directory: services
       - name: Unit tests
         run: go test -race -count=1 ./...
 
@@ -124,14 +124,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: server
+        working-directory: services
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: server/go.mod
+          go-version-file: services/go.mod
           cache: true
-          cache-dependency-path: server/go.sum
+          cache-dependency-path: services/go.sum
       - name: buf lint
         run: go tool buf lint
       - name: buf generate

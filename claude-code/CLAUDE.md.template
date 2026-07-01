@@ -49,14 +49,14 @@ scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
 
 ```bash
 # 全局
-make setup          # 安装所有依赖（server + web + graphify）
-make check          # 全量检查（server verify + web typecheck + web test）
-make infra-up       # 启动本地基础设施（Postgres、Kafka、Redis 等）
+make setup            # 安装所有依赖（services + web + graphify）
+make check            # 全量检查（services verify + web typecheck + web test）
+make infra-up         # 启动本地基础设施（Postgres、Kafka、Redis 等）
 
-# 后端 (server/)
-make server-verify  # fmtcheck + build + go test ./... (委托 cd server && make verify)
-make server-proto   # buf lint + buf generate
-make server-db      # sqlc generate
+# 后端 (services/)
+make services-verify  # fmtcheck + build + go test ./... (委托 cd services && make verify)
+make services-proto   # buf lint + buf generate
+make services-db      # sqlc generate
 
 # 前端 (apps/web/)
 make web-dev        # pnpm dev
@@ -72,7 +72,7 @@ make web-typecheck  # pnpm typecheck
 
 ### 后端（Go）
 - Go 版本：[填写，如 1.26]，`go.toolchain` 锁定，不得随意升级
-- 格式化：`gofmt`（`make server-fmt`），提交前必跑，CI 会校验
+- 格式化：`gofmt`（`make services-fmt`），提交前必跑，CI 会校验
 - 架构：hexagonal（domain / ports / adapters / app / bootstrap），禁止跨层直接调用
 - 错误处理：哨兵错误 + `errors.Is/As`，资金操作错误绝不吞 → 见 `go-error-handling` skill
 - 日志：只用 `log/slog`，禁 zap/zerolog/fmt.Print* → 见 `go-logging` skill
