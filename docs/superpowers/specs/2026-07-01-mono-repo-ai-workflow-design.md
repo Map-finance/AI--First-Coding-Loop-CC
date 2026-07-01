@@ -287,18 +287,26 @@ if service != "" {
 }
 ```
 
-### 6.3 Service → Project 映射
+### 6.3 Service → Agent 路由
 
-每个 workspace 维护一张 `workspace_service_routing` 配置(存入 workspace settings 或独立表):
+不维护独立路由表。路由配置存在 agent 实体自身上:创建智能体时通过 `负责服务` 多选字段声明该 agent 负责哪些服务(如 `api`、`matching-engine`)。
 
+BIOS 路由逻辑:
 ```
-service_name  →  project_id  +  default_assignee_id
-api           →  proj-xxx    +  agent-xxx
-web           →  proj-yyy    +  agent-yyy
-...
+收到 service = "api" 的 PR 事件
+  → 查询 workspace 内 services 包含 "api" 的 agent
+  → 按任务类型分发:
+      test-task   → 固定分配给 test agent(services 含 "test")
+      pr-review   → 分配给对应 service agent
+      bug-fix     → 分配给对应 service agent
 ```
 
-**V1 实现范围:** 只写入 service 标签(`service:api`)到关联 issue,路由表配置和自动指派在 V2 实现。V1 人工根据标签筛选指派。
+**BIOS 需要的改动:**
+- `agents` 表加 `services text[]` 列
+- 创建/编辑智能体 UI 加"负责服务"多选字段
+- `handlePullRequestEvent` 路由时查 `agents.services @> ARRAY[service]`
+
+**V1 实现范围:** 只写入 `service:api` 标签到关联 issue,agent services 字段 + 自动指派在 V2 实现。V1 人工根据标签筛选指派。
 
 ### 6.4 自动化测试 Bug 回写
 
