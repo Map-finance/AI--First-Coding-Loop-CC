@@ -22,32 +22,50 @@
 ```
 <repo-root>/
 ├── apps/
-│   └── web/                    # 前端应用
+│   └── web/                        # 前端应用
 ├── services/
-│   ├── api/                    # API 网关服务
-│   ├── matching-engine/        # 撮合引擎
-│   ├── indexer/                # 索引器
-│   └── sdk/                    # 共享 SDK(库,非独立部署)
+│   ├── api/                        # API 网关服务
+│   ├── matching-engine/            # 撮合引擎
+│   ├── indexer/                    # 索引器
+│   └── sdk/                        # 共享 SDK(库,非独立部署)
 ├── docs/
-│   ├── changelogs/             # 每个服务独立 changelog
+│   ├── architecture/               # 整体架构(全局,不分服务)
+│   │   ├── overview.md             # 系统架构图 + 各服务职责说明
+│   │   ├── service-map.md          # 服务间依赖与通信关系
+│   │   └── tech-stack.md           # 技术选型及理由
+│   ├── modules/                    # 各模块功能设计(每服务一份)
+│   │   ├── web.md
+│   │   ├── api.md
+│   │   ├── matching-engine.md
+│   │   ├── indexer.md
+│   │   └── sdk.md
+│   ├── feature-list.md             # 功能清单(全局,记录已上线/开发中/规划功能)
+│   ├── api/                        # HTTP/RPC 接口文档(每服务一份)
+│   │   ├── web.md
+│   │   ├── api.md
+│   │   └── sdk.md
+│   ├── data-model/                 # 数据库表结构 + 字段说明(每服务一份)
+│   │   ├── api.md
+│   │   └── matching-engine.md
+│   ├── changelogs/                 # 每个服务独立 changelog
 │   │   ├── web/CHANGELOG.md
 │   │   ├── api/CHANGELOG.md
 │   │   ├── matching-engine/CHANGELOG.md
 │   │   ├── indexer/CHANGELOG.md
 │   │   └── sdk/CHANGELOG.md
-│   ├── specs/                  # 设计文档
-│   ├── plans/                  # 实现计划
-│   └── test-cases/             # 测试用例 MD(按服务分目录)
+│   ├── specs/                      # 设计决策文档(高层,跨服务)
+│   ├── plans/                      # 实现计划
+│   └── test-cases/                 # 测试用例 MD(按服务分目录)
 │       ├── web/
 │       ├── api/
 │       ├── matching-engine/
 │       ├── indexer/
 │       └── sdk/
 ├── auto-tests/
-│   ├── e2e/                    # Playwright 前端 E2E 测试
-│   ├── api/                    # 接口集成测试
-│   └── load/                   # 压测脚本(k6 等)
-└── .claude/                    # harness 安装点
+│   ├── e2e/                        # Playwright 前端 E2E 测试
+│   ├── api/                        # 接口集成测试
+│   └── load/                       # 压测脚本(k6 等)
+└── .claude/                        # harness 安装点
 ```
 
 **合法服务名**(`<service>` 字段的合法值):
@@ -171,12 +189,18 @@ auto-tests/<type>/<service>/<feature>.yaml / .spec.ts   ← 可执行脚本
 
 ### 5.1 PR 生成 Prompt
 
-新增/更新 PR 生成 skill prompt,要求 agent 在提交 PR 草稿前必须:
+新增/更新 PR 生成 skill prompt,要求 agent 在提交 PR 草稿前必须完成以下文档同步:
 
-1. 确认 `docs/test-cases/<service>/` 已更新
-2. 确认 `docs/changelogs/<service>/CHANGELOG.md` 已追加本次变更
-3. 填齐 PR 模板所有 section(不允许留空或写"TODO")
-4. 在"影响范围"里列出所有修改过的 `services/` 或 `apps/` 子目录
+| 改动类型 | 必须同步更新的文档 | 对应 harness skill |
+|----------|-------------------|-------------------|
+| 新增/修改 HTTP/RPC 接口 | `docs/api/<service>.md` | `api-doc-output` |
+| 新增/修改 DB 表/字段/索引 | `docs/data-model/<service>.md` | `data-model-output` |
+| 新增/修改功能模块行为 | `docs/modules/<service>.md` | — |
+| 任意功能变更 | `docs/feature-list.md`(追加或更新条目) | — |
+| 任意变更 | `docs/changelogs/<service>/CHANGELOG.md` | — |
+| 可测功能变更 | `docs/test-cases/<service>/` | — |
+
+全部文档更新后方可生成 PR 草稿。PR 模板的"影响范围"需列出所有修改过的文档路径。
 
 ### 5.2 Pre-Push Git Hook
 
@@ -200,9 +224,25 @@ agent session 结束前检查:每个在"影响范围"里列出的服务,其 `doc
 
 ## 6. deepdog-BIOS 变更
 
-### 6.1 服务提取
+### 6.1 服务提取与回退路由
 
-在 `handlePullRequestEvent` 开头添加服务名提取:
+在 `handlePullRequestEvent` 完成 PR upsert 后,按三级优先级确定服务名:
+
+```
+级别 1: 解析分支名
+  feat/api/xxx → service = "api"  ✓ 直接路由
+
+级别 2: 分支名不合规 → 分析变更文件路径(纯路径匹配,非 LLM)
+  GitHub API: GET /repos/{owner}/{repo}/pulls/{number}/files
+  services/api/handler/auth.go  → api
+  services/api/service/token.go → api
+  全部命中同一服务 → service = "api" + 打 naming:nonstandard 标签
+
+级别 3: 文件跨多服务 → tag service:multi + 通知 workspace 默认负责人人工处理
+  services/api/... + services/matching-engine/...  → 无法自动路由
+```
+
+`parseServiceFromBranch` 实现:
 
 ```go
 // parseServiceFromBranch extracts the service segment from a
