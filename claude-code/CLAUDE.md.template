@@ -13,14 +13,14 @@
 ## 🛑 强制行为纪律(动手前必读)
 
 **任何写码 agent**(implementer / explorer / verifier-quality 等)**动手前**,必须先吃这份:
-- [`skills/agent-coding-discipline/SKILL.md`](skills/agent-coding-discipline/SKILL.md) — 10 条规则 + 4 个失败模式 + 8 项 pre-submit 自检
+- [`.claude/skills/agent-coding-discipline/SKILL.md`](.claude/skills/agent-coding-discipline/SKILL.md) — 10 条规则 + 4 个失败模式 + 8 项 pre-submit 自检
 
 ## 🛑 并行优先原则(v2.6,主 session 必读)
 
 **主 session 收到任何"加 X / 改 Y / 实现 Z"的需求,第一件事不是写码,而是判断"能不能并行分解"。**
 
-- 先调 [`skills/task-decomposer/SKILL.md`](skills/task-decomposer/SKILL.md) 决策并出 DAG
-- 可并行 → 调 [`skills/parallel-orchestrator/SKILL.md`](skills/parallel-orchestrator/SKILL.md) 用 Task tool **一条消息派 N 个子 agent 真并行**
+- 先调 [`.claude/skills/task-decomposer/SKILL.md`](.claude/skills/task-decomposer/SKILL.md) 决策并出 DAG
+- 可并行 → 调 [`.claude/skills/parallel-orchestrator/SKILL.md`](.claude/skills/parallel-orchestrator/SKILL.md) 用 Task tool **一条消息派 N 个子 agent 真并行**
 - 串行 → 直接走 architect-task-writer + implementer
 
 **默认保守**:有疑虑就串行(并行错的代价 ≫ 串行慢)。但对真正可分的任务(N 个独立 provider / 微服务、各自独立的功能模块)**一定要并行,不要傻串行**——这是 v2.6 对"v2.5 比 v2.2 慢"问题的核心解答。
@@ -47,31 +47,31 @@ PR 描述自动带 pre-submit checklist(见 `.github/pull_request_template.md`)�
 ## 这个仓库是什么
 [一句话：产品是什么、这个单仓包含哪些子系统（前端/后端服务/自动化测试），用什么核心技术栈。]
 
-## 目录结构(职责地图)
+## 目录结构(职责地图)参考模版
 
 ```
 apps/
-  web/                  # 前端应用（[按项目填：React/Vue/Next.js 等 + 包管理器]）
-services/               # 后端微服务（[按项目填：Go hexagonal / Python / Node.js 等]）
-  cmd/                  # 各服务 main 入口（Go 项目）
-  internal/services/    # 各微服务实现（Go hexagonal 项目）
-  internal/shared/      # 跨服务共享包（[按项目实际依赖填写]）
-  api/proto/            # Protobuf 定义（[按项目填：buf / protoc 等]）
-  api/gen/              # 生成代码（提交到仓库）
-  migrations/           # DB 迁移脚本（[按项目填：migrate / sqlc / Alembic 等]）
+  web/                  # 前端（TS + pnpm）
+services/               # Go 1.26 后端微服务（单 Go module，hexagonal）
+  cmd/<service>/        # 各服务 main 入口，各编译为一个二进制（+ migrator 等工具）
+  internal/services/    # 各微服务实现（kebab-case），每个含 domain/ports/adapters/app/bootstrap
+  internal/shared/      # 共享：money(Decimal18)/config(koanf)/db(sqlc)/transport/observability(slog)/platform
+  api/proto/            # Protobuf 定义（buf 管理）
+  api/gen/              # buf generate 生成代码（提交到仓库）
+  migrations/           # DB 迁移（golang-migrate + sqlc）
 auto-tests/             # 独立测试服务模块
   e2e/                  # Playwright 前端 E2E
   api/                  # 接口集成测试
   load/                 # 压测（k6）
-docs/                   # 所有文档（本仓，非 submodule）
-  architecture/         # 系统架构（overview、service-map、tech-stack）
-  api/<service>.md      # HTTP/RPC 接口文档（改接口必须同步）
-  data-model/<svc>.md   # DB 表结构文档（改 DB 必须同步）
-  modules/<svc>.md      # 模块设计动机（why，非 what）
-  feature-list.md       # 功能清单（全局）
-  changelogs/<svc>/     # 各服务 Changelog（任意改动必须追加）
-  test-cases/<svc>/     # 测试用例 MD（可测功能必须同步）
-graphify-out/           # 知识图谱（提交到仓库，make setup 自动安装）
+docs/                    # 设计文档（本仓，非 submodule）——按服务分目录，不用扁平分类目录
+  services/<服务名>/      # 每服务/组件一目录（可读名，可含空格，如 "Order Entry"、"Ledger"）
+    <服务名>.md           #   详细设计（如 下单网关.md），章节见 standards/文档模板.md
+    api.md               #   对外接口契约（改接口必须同步）→ skill: api-doc-output
+    数据模型.md            #   DB 表/字段/索引（改 DB 必须同步）→ skill: data-model-output
+    CHANGELOG.md         #   变更记录（任意功能变更必须追加）→ skill: changelog-output
+  standards/             # 全局规范（开发规范、文档模板、监控告警规范、组件使用规范）
+  <全局设计>.md           # 全局设计文档、契约底座、架构 slides 等
+graphify-out/           # 知识图谱（提交到仓库，install.sh 安装 graphify 生成，可选）
   GRAPH_REPORT.md       # 1页摘要，每 session 读一次
   graph.json            # 完整图谱，按需查询
 .claude/                # harness（skills、agents、settings）
@@ -187,9 +187,9 @@ gh release create <tag> --target main \
 
 ## v2 新增:Skills / Agents / State / Loops
 
-### Skills(`skills/<name>/SKILL.md`)
+### Skills(`.claude/skills/<name>/SKILL.md`)
 项目知识按域拆分。agent 看到 `description` 与 `when_to_use` 自动加载相关 skill。
-新增 skill:在 `skills/` 下建目录,登记到 `skills/README.md`。
+新增 skill:在 `.claude/skills/` 下建目录(目录名即 skill 名,含 SKILL.md;CC 按 frontmatter 的 `name`/`description` 自动发现,无需注册表)。
 
 #### 规范 skill 强制加载（开发与评审的共同底线）
 
@@ -231,13 +231,16 @@ gh release create <tag> --target main \
 
 #### 文档同步义务（PR 前必须完成）
 
-| 改动类型 | 必须同步更新 |
-|---------|------------|
-| 新增/修改 HTTP/RPC 接口 | `docs/api/<service>.md` |
-| 新增/修改 DB 表/字段/索引 | `docs/data-model/<service>.md` |
-| 新增/修改功能模块行为 | `docs/modules/<service>.md` + `docs/feature-list.md` |
-| 任意功能变更 | `docs/changelogs/<service>/CHANGELOG.md` |
-| 有可测试功能 | `docs/test-cases/<service>/` |
+> 采用**每服务文档**约定：`docs/services/<服务名>/` 下每服务一组文档（服务名用可读名，可含空格，如 "Order Entry"、"Ledger"），不用扁平的 `docs/api`、`docs/data-model` 分类目录。下表落点与对应 skill 一致：
+
+| 改动类型 | 必须同步更新 | 对应 skill |
+|---------|------------|-----------|
+| 新增/修改 HTTP/RPC 接口 | `docs/services/<服务名>/api.md` | `api-doc-output` |
+| 新增/修改 DB 表/字段/索引 | `docs/services/<服务名>/数据模型.md` | `data-model-output` |
+| 任意功能变更（PR 前） | `docs/services/<服务名>/CHANGELOG.md` | `changelog-output` |
+| 功能模块行为/设计变更 | 对应 `docs/services/<服务名>/<服务名>.md`（如 下单网关.md） | — |
+| 契约（proto/事件）变更 | 全局契约文档（如 `docs/事件契约底座.md`） | — |
+| 全局功能/架构演进 | 全局设计文档（如 `docs/全局设计文档.md`） | — |
 
 **所有相关文档必须在同一 PR 里更新，不允许单独补提。**
 

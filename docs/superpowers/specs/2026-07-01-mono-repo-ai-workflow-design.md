@@ -352,6 +352,8 @@ auto-tests/<type>/<service>/<feature>.yaml / .spec.ts   ← 可执行脚本
 | `api-doc-output` | 路径更新：`docs/api/<service>.md`；新增格式模板（金额字段标注为 string）；移除 docs-repo/contracts/ 引用 |
 | `data-model-output` | 路径更新：`docs/data-model/<service>.md`；新增 NUMERIC(38,18) 约定，禁 FLOAT；新增迁移说明模板（可回滚性、锁影响评估） |
 
+> **文档落点为项目可自定义项。** 上述 5.2/5.3 中 skill 记录的 `docs/api/<service>.md`、`docs/data-model/<service>.md`、`docs/changelogs/<service>/` 等为**默认（扁平）布局**；skill 本身不写死路径，而**以各项目 `CLAUDE.md`「目录结构」节为准**——例如 ba-trading 按服务分目录 `docs/services/<服务名>/{api.md,数据模型.md,CHANGELOG.md}`（另有各服务的 `<服务名>.md` 详细设计文档）。harness 源 skill（`claude-code/skills/*`）已改为「落点见项目 CLAUDE.md」的通用表述，因此 `tools/update.sh` 覆盖 skill 时不会打回项目自定义的落点。
+
 ### 5.4 CI 工作流更新（已完成）
 
 `core/workflows/ci.yml` 变更：

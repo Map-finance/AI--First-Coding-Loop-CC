@@ -1,20 +1,24 @@
 ---
 name: data-model-output
-description: 改动数据库表结构/数据模型时强制同步更新数据定义文档——在 docs/data-model/<service>.md 记录表/字段/类型/索引/约束/迁移说明。
+description: 改动数据库表结构/数据模型时强制同步更新数据定义文档——落点见项目 CLAUDE.md「目录结构」节，记录表/字段/类型/索引/约束/迁移说明。
 when_to_use: 新增/修改表、字段、索引、约束、迁移脚本时。
 when_NOT_to_use: 不涉及持久层结构的改动。
 ---
 
 # Skill: 数据定义产出
 
-改数据模型必须同步更新 `docs/data-model/<service>.md`。
+改数据模型必须同步更新对应服务的数据模型文档（落点见项目 CLAUDE.md「目录结构」节）。
 
 ## 文档路径规则
 
+数据模型文档的落点**由各项目自定义**（见项目 `CLAUDE.md`「目录结构」节）。两种常见组织：
+
 ```
-docs/data-model/<service>.md
-  services/api/             → docs/data-model/api.md
-  services/matching-engine/ → docs/data-model/matching-engine.md
+# 扁平（默认模板）
+docs/data-model/<service>.md            services/matching-engine/ → docs/data-model/matching-engine.md
+
+# 按服务分目录（如 ba-trading，目录带空格）
+docs/services/<服务名>/数据模型.md   cmd/ledger/ → docs/services/Ledger/数据模型.md
 ```
 
 ## 每处变更需记录
