@@ -1,38 +1,46 @@
-# CLAUDE.md — 本代码仓的 agent 常驻上下文(v2.1)
+# CLAUDE.md — 单仓根上下文(agent 的常驻地图)
 
-> v2 升级:把项目知识从单文件拆成 `skills/` 体系;sub-agent 角色化;新增 `state/` 外置记忆。
-> **v2.1 升级**:模型无关——支持 Anthropic / OpenAI / DeepSeek / Qwen / Kimi / GLM 等任意厂商。
-> 切厂商只需 2 个 env:`LLM_PROVIDER` + `LLM_API_KEY`。详见 `docs/多模型适配.md`。
-> 任何 agent 进入项目后,**先读本文件,再按需 Read 相关 skill**。
-
-> 这是 harness 的核心文件之一。**多仓架构下每个代码仓各有一份 CLAUDE.md**,反映本仓真实
-> 结构与命令;跨仓共享的文档/接口/契约在独立的 **docs-repo**(经 git submodule 挂到 `docs/`)。
-> 任何 agent(评审、实现、triage)进入本仓都先读它。**目标:一个全新 agent 只读本文件 + 本仓,
-> 就能独立完成一个改动并让测试通过。** 把方括号占位换成本仓真实内容,随架构演进持续更新。
+> 单仓(mono-repo)：前端 + 后端多微服务 + 自动化测试 + 文档，全在一个仓库。
+> 任何 agent 进入项目后，**先读本文件 → 读 graphify-out/GRAPH_REPORT.md → 按需读相关 skill**。
+> 目标：全新 agent 只读本文件 + 本仓，就能独立完成一个跨服务改动并让测试通过。
+> 把方括号 `[...]` 占位换成本仓真实内容，随架构演进持续更新。
 
 ---
 
 ## 这个仓库是什么
-[一句话:本仓是什么服务/应用、用什么技术栈、在产品里的角色;在多仓体系中与哪些仓对接(经 docs-repo/contracts 共享契约)。]
+[一句话：产品是什么、这个单仓包含哪些子系统（前端/后端服务/自动化测试），用什么核心技术栈。]
 
 ## 目录结构(职责地图)
-> 这是**本代码仓**的结构,按本仓真实情况填(不同项目/语言不同)。
+
 ```
-[本仓主源码,按实际填,例如:]
-src/ | app/ | cmd/    # 本仓主源码入口
-internal/ | pkg/      # 本仓内部模块
-docs/                 # ← git submodule,指向共享 docs-repo(总体架构/各服务设计/接口/数据定义)
-.github/              # 本仓 CI/CD 与 AI 评审工作流
-scripts/              # 自动化脚本(若装了 harness 的 core/scripts)
+apps/
+  web/                  # React 前端（TypeScript + pnpm）
+services/               # Go 后端微服务（hexagonal arch，多服务共一 Go module）
+  cmd/                  # 各服务 main 入口
+  internal/services/    # 各微服务实现
+  internal/shared/      # 共享包（money、ulid、kafka、db 等）
+  api/proto/            # Protobuf 定义（buf 管理）
+  api/gen/              # 生成代码（buf generate，提交到仓库）
+  migrations/           # DB 迁移脚本（sqlc）
+auto-tests/             # 独立测试服务模块
+  e2e/                  # Playwright 前端 E2E
+  api/                  # 接口集成测试
+  load/                 # 压测（k6）
+docs/                   # 所有文档（本仓，非 submodule）
+  architecture/         # 系统架构（overview、service-map、tech-stack）
+  api/<service>.md      # HTTP/RPC 接口文档（改接口必须同步）
+  data-model/<svc>.md   # DB 表结构文档（改 DB 必须同步）
+  modules/<svc>.md      # 模块设计动机（why，非 what）
+  feature-list.md       # 功能清单（全局）
+  changelogs/<svc>/     # 各服务 Changelog（任意改动必须追加）
+  test-cases/<svc>/     # 测试用例 MD（可测功能必须同步）
+graphify-out/           # 知识图谱（提交到仓库，make setup 自动安装）
+  GRAPH_REPORT.md       # 1页摘要，每 session 读一次
+  graph.json            # 完整图谱，按需查询
+.claude/                # harness（skills、agents、settings）
+.github/                # CI/CD 工作流
+Makefile                # 根级委托（services-* / web-* 分开）
 ```
-> docs-repo(经 docs/ submodule 共享)按**多项目**组织,不要平铺到根:
->   docs-repo/
->   ├── contracts/                      # 跨项目共享接口契约
->   ├── <project>/                      # 每个项目一个顶层目录
->   │   ├── architecture.md
->   │   ├── backend/<svc>/{design,data-model,api}.md
->   │   └── frontend/<module>/{design,api}.md
-> 跨前后端/跨服务共享的接口、类型、契约放在 **docs-repo 的 `contracts/`**,本仓经 `docs/` submodule 引用,**不要在本仓复制**。
 
 ## Session 开始必读
 
@@ -111,7 +119,7 @@ make web-typecheck  # pnpm typecheck
 3. 不扩大范围;任务模板(`prompts/architect-task.md`)第 3 节之外的需求,先问架构师。
 4. 自带测试,确保本仓的集成/测试命令(见"本地开发"节)通过。
 5. 开 PR 时在描述里列出权衡点,并指出需要人类重点看的"战略风险"。
-6. 复用 docs-repo 的 `contracts/`(经 `docs/` submodule),不要在仓内复制跨服务类型。
+6. 跨服务共享类型放 `services/internal/shared/`，不要在各服务间复制。
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
 
