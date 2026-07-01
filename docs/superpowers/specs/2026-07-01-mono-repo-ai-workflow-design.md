@@ -142,9 +142,16 @@ docs(web): update onboarding guide
 
 ```
 agent 开发功能(同一 session)
-  ├─ 更新 docs/test-cases/<service>/    ← 与代码同步,同一 PR
-  ├─ 更新 docs/changelogs/<service>/CHANGELOG.md
-  └─ 生成 PR 草稿(完整模板填齐)
+  │
+  ├─ [改了接口]        → 更新 docs/api/<service>.md
+  ├─ [改了 DB 表结构]  → 更新 docs/data-model/<service>.md
+  ├─ [改了功能行为]    → 更新 docs/modules/<service>.md
+  ├─ [任意功能变更]    → 更新 docs/feature-list.md(追加或更新条目)
+  ├─ [有可测功能]      → 更新 docs/test-cases/<service>/
+  └─ [任意变更]        → 更新 docs/changelogs/<service>/CHANGELOG.md
+        │
+        ▼
+  生成 PR 草稿(完整模板,影响范围列出所有改过的文档路径)
         │
         ▼
   输出草稿给人审查
@@ -155,7 +162,7 @@ agent 开发功能(同一 session)
   人执行: gh pr create
 ```
 
-**测试用例和 changelog 必须在同一个 PR 里更新,不允许单独补提。**
+**所有相关文档必须在同一个 PR 里更新,不允许单独补提。** 判断依据:看改动类型,不是每次全更新。
 
 ---
 
