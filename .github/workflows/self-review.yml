@@ -12,14 +12,9 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
-    # 纯文档 PR 不跑评审(省 CI + 时间);只要有一个非文档文件改动就照常跑
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.mdx'
-      - '**/*.txt'
-      - 'docs/**'
-      - 'LICENSE'
-      - '**/CHANGELOG*'
+    # 注意:不要用 paths-ignore 做"纯文档跳过"——那会让 required check 在纯文档 PR
+    # 上永不 report 而卡死合并。纯文档跳过由 reusable 里的 changes job 处理:
+    # 三趟评审跳过、ai-review-gate 仍上报并变绿。
 
 jobs:
   review:

@@ -5,7 +5,7 @@
 
 把任何新项目从「人在按提示」改造成「系统在按提示,人做架构与判断」——这个仓库提供完整的"骨架"。
 
-当前最新版本:**v2.6 — Parallel sub-agent orchestration**。
+当前最新版本:[![latest release](https://img.shields.io/github/v/release/WILLcis/AI--First-Coding-Loop-CC?label=release)](https://github.com/WILLcis/AI--First-Coding-Loop-CC/releases) —— 每次合并 main 自动发版(tag + Release),变更明细见 [Releases](https://github.com/WILLcis/AI--First-Coding-Loop-CC/releases)。README 不再手写版本号,防漂移。
 
 ---
 
@@ -123,7 +123,7 @@ jobs:
     with:   { provider: openai, model_default: gpt-5.5 }
 ```
 
-**就这些**——下一个 PR 自动跑三趟评审,无需拷贝任何文件。生产仓建议把 `@main` 钉到最新稳定 tag,例如 `@v2.6`。
+**就这些**——下一个 PR 自动跑三趟评审,无需拷贝任何文件。**生产仓务必把 `@main` 钉到具体 tag**(最新见 [Releases](https://github.com/WILLcis/AI--First-Coding-Loop-CC/releases)),否则会实时吃 main 的每次变更。
 完整参数、各厂商示例、与 install.sh 拷贝版的取舍,见 [`docs/reusable-workflows.md`](docs/reusable-workflows.md)。
 
 ### 姿势 5:**Parallel Orchestration**(v2.6,大任务并行)

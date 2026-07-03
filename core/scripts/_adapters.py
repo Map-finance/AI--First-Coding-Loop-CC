@@ -468,15 +468,18 @@ class ModelAdapter:
         oauth = os.getenv("CLAUDE_CODE_OAUTH_TOKEN") or os.getenv("ANTHROPIC_AUTH_TOKEN")
         if oauth:
             role_env = f"LLM_MODEL_{role.upper().replace('-', '_')}"
-            # 不读 LLM_MODEL,除非它确实是 claude 模型——避免被遗留的 gpt-* 值污染
-            llm_model = os.getenv("LLM_MODEL", "")
-            if "claude" not in llm_model.lower():
-                llm_model = ""
+
+            # oauth 路只走 Anthropic:任何来源的模型值(显式参数 / 角色级 env /
+            # CC_MODEL / LLM_MODEL)只要不是 claude 模型就忽略——避免被遗留的
+            # gpt-* 配置污染(打到 Anthropic 只会 404 → fail-open 静默放行)。
+            def _claude_only(v: str | None) -> str:
+                return v if v and "claude" in v.lower() else ""
+
             used_model = (
-                model
-                or os.getenv(role_env)
-                or os.getenv("CC_MODEL")
-                or llm_model
+                _claude_only(model)
+                or _claude_only(os.getenv(role_env))
+                or _claude_only(os.getenv("CC_MODEL"))
+                or _claude_only(os.getenv("LLM_MODEL"))
                 or "claude-sonnet-4-6"
             )
             try:

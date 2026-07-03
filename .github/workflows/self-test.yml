@@ -84,6 +84,20 @@ jobs:
           done
           echo "OK 三份 scan workflow 修复齐"
 
+      - name: docs-skip 四路一致性(防"纯文档跳过评审"再漂移)
+        run: |
+          for f in templates/cc-quota-review/.github/workflows/harness-claude-review.yml \
+                   core/workflows/ai-review.yml \
+                   .github/workflows/ai-review-reusable.yml; do
+            if ! grep -q 'needs.changes.outputs.code' "$f"; then
+              echo "::error::$f 缺 docs-skip(changes job 门控)"; exit 1
+            fi
+          done
+          if grep -qE '^\s*paths-ignore:' .github/workflows/self-review.yml; then
+            echo "::error::self-review 不应用 paths-ignore(纯文档 PR 会让 required check 永不上报而卡死);应依赖 reusable 的 changes job"; exit 1
+          fi
+          echo "OK 四路 docs-skip 一致"
+
       - name: end-to-end install.sh + verify.sh
         run: |
           T=$(mktemp -d)
