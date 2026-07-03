@@ -14,7 +14,8 @@
 #
 #   jobs:
 #     review:
-#       uses: WILLcis/AI--First-Coding-Loop-CC/.github/workflows/ai-review-reusable.yml@main
+#       # ⚠ 生产仓务必把 @main 钉到具体 tag(最新见 Releases),否则实时吃 main 的每次变更
+#       uses: WILLcis/AI--First-Coding-Loop-CC/.github/workflows/ai-review-reusable.yml@v2.11
 #       secrets:
 #         LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
 #       with:
@@ -23,7 +24,10 @@
 #         model_security: gpt-5.5             # security 趟用旗舰
 #         model_quality: gpt-5.5
 #         model_dependency: gpt-4o-mini       # dependency 趟便宜模型即可
-#         ref: main                            # 拉哪个版本的 harness(建议钉 tag,如 v2.2)
+#         ref: v2.11                           # 拉哪个版本的 harness 脚本(与上面 uses 的 tag 保持一致)
+#
+# 💡 有 Claude Code 会员订阅?优先用 templates/cc-quota-review/(官方 action 走 CC 额度,
+#    不付云 API,多仓生产实测)。本 reusable 适合用云厂商 API key 的仓。
 # -----------------------------------------------------------------------------
 # 设计:
 #   - 三趟并行 + 汇总 gate(与拷贝版 ai-review.yml 行为一致)

@@ -66,6 +66,16 @@ AI--First-Coding-Loop-CC/
 
 ## 怎么用(六种姿势)
 
+> ### 🎯 CI 评审选型(先看这个,别装错)
+>
+> | 你的情况 | 用哪条路 |
+> |---|---|
+> | **有 Claude Code 会员订阅**(最常见) | **★ [`templates/cc-quota-review/`](templates/cc-quota-review/)** —— 官方 `claude-code-action` 三趟评审,走 CC 会员额度、不付云 API。多仓生产实测。只需 4 个文件 + 1 个 secret(`CLAUDE_CODE_OAUTH_TOKEN`),见其 README。 |
+> | 没有 CC 订阅,用云厂商 API key(OpenAI/DeepSeek/Qwen…) | 下面的姿势 1(拷贝)或姿势 4(reusable)—— `ai_review.py` 多厂商路,配 `LLM_PROVIDER` + `LLM_API_KEY`。 |
+> | 什么 key 都不想配,单人起步 | 姿势 0(local-only)。 |
+>
+> 注:`ai_review.py` 也能读 `CLAUDE_CODE_OAUTH_TOKEN` 直连 Anthropic(Bearer),但**订阅 token 直连 Messages API 未经生产验证**——有 CC 订阅就用上面的模板路,它由官方 action 处理订阅身份,最稳。
+
 ### 姿势 0:**Local-only**(★ 起步 / 单人开发,$0,完全吃 Claude Code 订阅)
 
 不付远端 API 钱,push 前在本地用 Claude Code 跑三趟评审:
