@@ -357,7 +357,7 @@ EOF
 ## 7. OpenAI / GPT-5.5 专属注意事项
 
 1. **模型字符串可能漂移**:`gpt-5.5` 若 OpenAI 改名(如 `gpt-5.5-turbo`、`gpt-5.5-2026-xx-xx`),只需改一个 GitHub Variable `LLM_MODEL`,代码不动
-2. **rate limit 与 deepdog 那种 Anthropic 节奏不同**:OpenAI tier 限速更宽,但 PR 量大时仍建议三趟评审错峰跑(`concurrency` 已经做了)
+2. **rate limit 节奏与 Anthropic 不同**:OpenAI tier 限速更宽,但 PR 量大时仍建议三趟评审错峰跑(`concurrency` 已经做了)
 3. **token 计费方式**:OpenAI usage 字段是 `prompt_tokens` / `completion_tokens`,v2.1 的 `_adapters.py` 的 OpenAI 兼容路径已正确读取这两个字段
 4. **没有 Anthropic 的 prompt caching**:同一 PR 多趟评审会重复计费 system+diff——是 OpenAI 的成本结构差别,无解,但单 PR 月费仍可控
 

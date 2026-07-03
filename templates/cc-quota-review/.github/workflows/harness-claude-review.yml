@@ -29,8 +29,32 @@ permissions:
   id-token: write
 
 jobs:
+  # 判断本 PR 是否含"非文档"改动。纯文档 PR 跳过三趟评审,省 CI + 时间;
+  # ai-review-gate 仍会跑并变绿,所以即便把它设成 required check 也不会卡住纯文档 PR。
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.f.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: f
+        name: 检测是否有非文档改动
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          head='${{ github.event.pull_request.head.sha }}'
+          code=$(git diff --name-only "$base" "$head" \
+                 | grep -vE '(\.(md|mdx|markdown|txt|rst)$)|(^|/)docs/|^\.harness/prompts/|(^|/)LICENSE|(^|/)CHANGELOG' \
+                 || true)
+          if [ -n "$code" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; echo "含非文档改动,跑三趟评审:"; echo "$code"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"; echo "纯文档 PR,跳过三趟评审。"
+          fi
+
   quality:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +88,8 @@ jobs:
             >> .harness/state/token-usage.jsonl
 
   security:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +123,8 @@ jobs:
             >> .harness/state/token-usage.jsonl
 
   dependency:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -137,7 +163,7 @@ jobs:
             >> .harness/state/token-usage.jsonl
 
   ai-review-gate:
-    needs: [quality, security, dependency]
+    needs: [changes, quality, security, dependency]
     if: always()
     runs-on: ubuntu-latest
     steps:

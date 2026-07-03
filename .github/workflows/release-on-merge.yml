@@ -1,0 +1,65 @@
+# =============================================================================
+# Release on merge — 合并进 main 自动打 tag + 建 GitHub Release
+# -----------------------------------------------------------------------------
+# 实现 CLAUDE.md 的「合并与发布纪律」:每次合并 main 必须留下 tag(回滚锚点)
+# + Release(人能读的合并审计)。此前靠人/agent 记得,现在自动化。
+#
+# 版本规则:取最新 v<MAJOR>.<MINOR> tag,MINOR+1(与本仓 v2.6→2.7→… 惯例一致)。
+# 发布说明:squash commit 的标题+正文(即 PR 标题+描述)+ gen_release_notes.py
+# 生成的自上一 tag 以来的变更列表(配了 CLAUDE_CODE_OAUTH_TOKEN 时为 AI 摘要,
+# 否则回退为原始 commit 列表)。
+# 跳过:commit 标题含 [skip release] 时不发版。
+# =============================================================================
+name: Release on merge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-on-merge
+  cancel-in-progress: false
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: 计算版本、生成说明、建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          subject=$(git log -1 --pretty=%s)
+          case "$subject" in
+            *"[skip release]"*) echo "标题含 [skip release],跳过发版"; exit 0 ;;
+          esac
+          git fetch --tags -q
+          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          latest=${latest:-v2.0}
+          base=${latest%%+*}
+          major=$(echo "$base" | sed -E 's/^v([0-9]+)\..*/\1/')
+          minor=$(echo "$base" | sed -E 's/^v[0-9]+\.([0-9]+).*/\1/')
+          next="v${major}.$((minor+1))"
+          echo "latest=$latest → next=$next"
+
+          body=$(git log -1 --pretty=%b)
+          pip install -q -r core/scripts/requirements.txt || true
+          notes=$(python3 core/scripts/gen_release_notes.py --since-last-tag 2>/dev/null || true)
+          {
+            printf '%s\n\n' "${body:-$subject}"
+            if [ -n "$notes" ]; then
+              printf -- '---\n\n%s\n' "$notes"
+            fi
+            printf '\n> auto-released on merge · commit %s\n' "$GITHUB_SHA"
+          } > /tmp/notes.md
+          gh release create "$next" --target "$GITHUB_SHA" \
+            --title "$next — $subject" \
+            --notes-file /tmp/notes.md

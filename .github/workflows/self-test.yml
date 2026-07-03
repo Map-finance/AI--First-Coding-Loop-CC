@@ -1,0 +1,131 @@
+# =============================================================================
+# Self Test — harness 仓自身的一致性/健全性自测(每个 PR 必跑)
+# -----------------------------------------------------------------------------
+# 动机:此前 verify.sh 假红、SARIF 修复漂移都是靠手动接力包才发现的。
+# 一个"自愈环"项目自己必须有 CI 自测。本 workflow 把 harness-repo-selftest
+# 接力包里的只读检查固化成 PR 门禁:
+#   - 全部 Python 脚本 py_compile
+#   - 全部 workflow YAML(core/ + .github/ + templates/)可解析
+#   - agent TOML 必备字段 / skill front-matter 完整
+#   - SARIF 修复在三份 scan workflow 里都在(防再次漂移)
+#   - end-to-end install.sh + verify.sh
+#   - 核心脚本 mock 冒烟(ai_review 三趟 / triage / perf_check)
+#   - tests/ 存在则跑 pytest
+# 便宜(无 LLM 调用,~1 分钟),所有 PR 都跑。
+# =============================================================================
+name: Self Test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q pyyaml
+
+      - name: py_compile 全部脚本
+        run: |
+          python3 -m py_compile core/scripts/*.py
+          echo "OK $(ls core/scripts/*.py | wc -l) 个脚本"
+
+      - name: workflow YAML 全部可解析(core + .github + templates)
+        run: |
+          python3 - <<'PY'
+          import yaml, glob
+          files = sorted(
+              glob.glob('core/workflows/*.yml')
+              + glob.glob('.github/workflows/*.yml')
+              + glob.glob('templates/**/*.yml', recursive=True))
+          for f in files:
+              d = yaml.safe_load(open(f))
+              assert 'jobs' in d, f"{f} 无 jobs"
+          print(f"OK {len(files)} 个 workflow")
+          PY
+
+      - name: agent TOML 必备字段
+        run: |
+          python3 - <<'PY'
+          import glob, tomllib
+          req = {'name', 'description', 'provider', 'model', 'tools'}
+          files = sorted(glob.glob('claude-code/agents/*.toml'))
+          for f in files:
+              d = tomllib.loads(open(f, 'rb').read().decode())
+              missing = req - set(d)
+              assert not missing, f"{f} 缺字段 {missing}"
+          print(f"OK {len(files)} 个 agent")
+          PY
+
+      - name: skill front-matter 完整
+        run: |
+          python3 - <<'PY'
+          import yaml, glob, re
+          req = {'name', 'description', 'when_to_use', 'when_NOT_to_use'}
+          files = sorted(glob.glob('claude-code/skills/*/SKILL.md'))
+          for f in files:
+              m = re.match(r'---\n(.*?)\n---', open(f).read(), re.S)
+              assert m, f"{f} 无 front-matter"
+              missing = req - set(yaml.safe_load(m.group(1)) or {})
+              assert not missing, f"{f} 缺 {missing}"
+          print(f"OK {len(files)} 个 skill")
+          PY
+
+      - name: SARIF 修复一致性(防 v2.5.1 修复再漂移)
+        run: |
+          for f in core/workflows/secret-scan.yml core/workflows/image-scan.yml .github/workflows/secret-scan.yml; do
+            n=$(grep -c 'continue-on-error: true' "$f")
+            if [ "$n" -lt 2 ]; then
+              echo "::error::$f 缺 SARIF 修复(continue-on-error 仅 $n 处,期望 ≥2)"; exit 1
+            fi
+          done
+          echo "OK 三份 scan workflow 修复齐"
+
+      - name: docs-skip 四路一致性(防"纯文档跳过评审"再漂移)
+        run: |
+          for f in templates/cc-quota-review/.github/workflows/harness-claude-review.yml \
+                   core/workflows/ai-review.yml \
+                   .github/workflows/ai-review-reusable.yml; do
+            if ! grep -q 'needs.changes.outputs.code' "$f"; then
+              echo "::error::$f 缺 docs-skip(changes job 门控)"; exit 1
+            fi
+          done
+          if grep -qE '^\s*paths-ignore:' .github/workflows/self-review.yml; then
+            echo "::error::self-review 不应用 paths-ignore(纯文档 PR 会让 required check 永不上报而卡死);应依赖 reusable 的 changes job"; exit 1
+          fi
+          echo "OK 四路 docs-skip 一致"
+
+      - name: end-to-end install.sh + verify.sh
+        run: |
+          T=$(mktemp -d)
+          git -C "$T" init -q
+          git -C "$T" config user.email t@t.co
+          git -C "$T" config user.name t
+          bash tools/install.sh "$T"
+          cd "$T" && bash "$GITHUB_WORKSPACE/tools/verify.sh"
+
+      - name: 核心脚本 mock 冒烟
+        run: |
+          for p in quality security dependency; do
+            AIFCL_PROMPTS_DIR=core/prompts python3 core/scripts/ai_review.py --pass "$p" --mock
+          done
+          OBSERVABILITY_BACKEND=mock TRACKER=github-dryrun python3 core/scripts/triage_engine.py
+          # perf_check:首跑建基线应 PASS,恶化应 BLOCK
+          TMP=$(mktemp)
+          echo '{"metrics":{"http_req_duration":{"values":{"p(95)":250,"p(99)":375}},"http_reqs":{"values":{"rate":120}},"http_req_failed":{"values":{"rate":0.005}}}}' > "$TMP"
+          python3 core/scripts/perf_check.py --scenario ci --summary "$TMP" --update-baseline | grep -q 'VERDICT: PASS'
+          echo '{"metrics":{"http_req_duration":{"values":{"p(95)":500,"p(99)":750}},"http_reqs":{"values":{"rate":120}},"http_req_failed":{"values":{"rate":0.005}}}}' > "$TMP"
+          python3 core/scripts/perf_check.py --scenario ci --summary "$TMP" | grep -q 'VERDICT: BLOCK'
+          rm -f "$TMP" core/state/perf-baseline.json
+          echo "OK mock 冒烟全过"
+
+      - name: pytest(tests/ 存在时)
+        run: |
+          if [ -d tests ]; then
+            pip install -q pytest && python3 -m pytest -q tests/
+          else
+            echo "(暂无 tests/,跳过)"
+          fi

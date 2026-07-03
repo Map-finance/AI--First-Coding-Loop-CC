@@ -82,8 +82,12 @@ def post_pr_comment(repo: str, pr: str, token: str, body: str) -> None:
     )
 
 
-def parse_verdict(text: str) -> str:
-    """从模型输出末尾找 VERDICT: PASS|BLOCK。容错:有时模型会写在中间。"""
+def parse_verdict(text: str) -> str | None:
+    """从模型输出末尾找 VERDICT: PASS|BLOCK。容错:有时模型会写在中间。
+
+    找不到明确判定时返回 None——由调用方决定怎么处理(默认按 PASS,但要显式警告,
+    不许静默;见 main 里的 degraded 逻辑)。
+    """
     for line in reversed(text.splitlines()):
         s = line.strip().upper()
         if s.startswith("VERDICT:"):
@@ -91,8 +95,7 @@ def parse_verdict(text: str) -> str:
                 return "BLOCK"
             if "PASS" in s:
                 return "PASS"
-    # 模型未明确判定 → 保守视为 PASS(避免噪音),但在 PR 评论里指出
-    return "PASS"
+    return None
 
 
 def parse_args() -> argparse.Namespace:
@@ -141,6 +144,10 @@ def main() -> int:
         + "\n请按规则输出发现,末尾给出 `VERDICT: PASS` 或 `VERDICT: BLOCK`。"
     )
 
+    # degraded ∈ {None, "no_credentials", "model_error", "no_verdict"}
+    # v2.11:评审没真正执行时不许静默放行——必须 ::warning + PR 评论显式说明;
+    # 设 AI_REVIEW_FAIL_CLOSED=1 可改为直接 BLOCK(严格模式)。
+    degraded = None
     if args.mock:
         print(f"=== MOCK pass={pass_name} role={role} prompt_chars={len(full_prompt)} ===")
         verdict = "PASS"
@@ -149,16 +156,39 @@ def main() -> int:
         review_body = ModelAdapter.summarize(
             full_prompt, loop="ai-review", role=role,
         )
-        verdict = parse_verdict(review_body)
+        if review_body.startswith("[模型未配置"):
+            degraded = "no_credentials"
+        elif review_body.startswith("[模型调用失败"):
+            degraded = "model_error"
+        raw = parse_verdict(review_body)
+        if raw is None and degraded is None:
+            degraded = "no_verdict"
+        verdict = raw or "PASS"
+
+    fail_closed = os.getenv("AI_REVIEW_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+    if degraded:
+        print(f"::warning::AI review pass={pass_name} 未真正判定({degraded})"
+              f"{' — FAIL_CLOSED 开启,按 BLOCK 处理' if fail_closed else ' — 按 PASS 放行(fail-open)'}"
+              f":{review_body[:160]}")
+        if fail_closed:
+            verdict = "BLOCK"
 
     print(f"--- {pass_name} verdict: {verdict} ---")
     print(review_body[:2000])
 
-    # 发评论(真跑时)。verdict 一行单独高亮放头部,方便人扫
+    # 发评论(真跑时)。verdict 一行单独高亮放头部,方便人扫;
+    # 评审未真正执行时用 ⚠️ 头部显式区分,不许伪装成 ✅。
     if pr and repo and gh_token and not args.mock:
-        header = ("✅ **AI Review · " + pass_name + " · PASS**"
-                  if verdict == "PASS"
-                  else "🛑 **AI Review · " + pass_name + " · BLOCK**")
+        if degraded and verdict != "BLOCK":
+            header = (f"⚠️ **AI Review · {pass_name} · SKIPPED({degraded})** — "
+                      "评审未真正执行,按 fail-open 放行。修复凭证/模型后 re-run 本 job。")
+        elif degraded and verdict == "BLOCK":
+            header = (f"🛑 **AI Review · {pass_name} · BLOCK(FAIL_CLOSED:{degraded})** — "
+                      "评审未真正执行且严格模式开启。")
+        elif verdict == "PASS":
+            header = "✅ **AI Review · " + pass_name + " · PASS**"
+        else:
+            header = "🛑 **AI Review · " + pass_name + " · BLOCK**"
         post_pr_comment(repo, pr, gh_token, header + "\n\n" + review_body)
 
     return 1 if verdict == "BLOCK" else 0

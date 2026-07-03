@@ -14,7 +14,8 @@
 #
 #   jobs:
 #     review:
-#       uses: WILLcis/AI--First-Coding-Loop-CC/.github/workflows/ai-review-reusable.yml@main
+#       # ⚠ 生产仓务必把 @main 钉到具体 tag(最新见 Releases),否则实时吃 main 的每次变更
+#       uses: WILLcis/AI--First-Coding-Loop-CC/.github/workflows/ai-review-reusable.yml@v2.11
 #       secrets:
 #         LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
 #       with:
@@ -23,7 +24,10 @@
 #         model_security: gpt-5.5             # security 趟用旗舰
 #         model_quality: gpt-5.5
 #         model_dependency: gpt-4o-mini       # dependency 趟便宜模型即可
-#         ref: main                            # 拉哪个版本的 harness(建议钉 tag,如 v2.2)
+#         ref: v2.11                           # 拉哪个版本的 harness 脚本(与上面 uses 的 tag 保持一致)
+#
+# 💡 有 Claude Code 会员订阅?优先用 templates/cc-quota-review/(官方 action 走 CC 额度,
+#    不付云 API,多仓生产实测)。本 reusable 适合用云厂商 API key 的仓。
 # -----------------------------------------------------------------------------
 # 设计:
 #   - 三趟并行 + 汇总 gate(与拷贝版 ai-review.yml 行为一致)
@@ -94,8 +98,32 @@ permissions:
   pull-requests: write
 
 jobs:
+  # v2.11:纯文档 PR 跳过三趟评审(省 CI/时间/模型额度)。
+  # ai-review-gate 始终跑并变绿 → 调用方把它设成 required check 也不会卡住纯文档 PR。
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.f.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: f
+        name: 检测是否有非文档改动
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          head='${{ github.event.pull_request.head.sha }}'
+          code=$(git diff --name-only "$base" "$head" \
+                 | grep -vE '(\.(md|mdx|markdown|txt|rst)$)|(^|/)docs/|^\.harness/prompts/|(^|/)LICENSE|(^|/)CHANGELOG' \
+                 || true)
+          if [ -n "$code" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; echo "含非文档改动,跑三趟评审:"; echo "$code"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"; echo "纯文档 PR,跳过三趟评审。"
+          fi
+
   quality:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout caller repo
@@ -127,7 +155,8 @@ jobs:
         run: python3 _aifcl/core/scripts/ai_review.py --pass quality
 
   security:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -157,7 +186,8 @@ jobs:
         run: python3 _aifcl/core/scripts/ai_review.py --pass security
 
   dependency:
-    if: github.event.pull_request.draft == false
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -187,13 +217,13 @@ jobs:
         run: python3 _aifcl/core/scripts/ai_review.py --pass dependency
 
   ai-review-gate:
-    needs: [quality, security, dependency]
+    needs: [changes, quality, security, dependency]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Enforce all passes
         run: |
-          for r in ${{ needs.quality.result }} ${{ needs.security.result }} ${{ needs.dependency.result }}; do
+          for r in ${{ needs.changes.result }} ${{ needs.quality.result }} ${{ needs.security.result }} ${{ needs.dependency.result }}; do
             if [ "$r" = "failure" ]; then
               echo "::error::AI review gate failed — 见 PR 评论。"; exit 1
             fi

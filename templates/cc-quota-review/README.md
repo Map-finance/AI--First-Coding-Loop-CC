@@ -56,6 +56,17 @@ done
   App"**:不传它时 action 走 OIDC 换 app-token,会报 "Claude Code is not installed"。
 - `permissions: pull-requests: write` —— 让 action 能贴评审评论。
 
+## 纯文档 PR 自动跳过(省 CI)
+
+workflow 第一个 `changes` job(几秒)判断本 PR 有没有**非文档**改动:
+
+- **纯文档 PR**(只改 `*.md/*.mdx/*.txt/*.rst`、`docs/`、`.harness/prompts/`、`LICENSE`、`CHANGELOG`)
+  → 三趟评审(每趟 2–3 分钟)**全部跳过**,不浪费 CI 和模型额度。
+- **含代码改动** → 照常跑三趟。
+
+`ai-review-gate` 始终会跑并变绿,所以即便把它设成 required check,纯文档 PR 也**不会被卡住**。
+要增删"算文档"的路径,改 `changes` job 里那条 `grep -vE` 的正则。
+
 ## 微调
 
 - `dependency` 趟里 `git diff ... -- '**/package.json' 'go.mod' ...` 的依赖文件 glob,
