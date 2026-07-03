@@ -26,7 +26,7 @@ when_NOT_to_use: 仅内部函数重构、不影响对外契约。
 docs/api/<service>.md                  services/matching-engine/ → docs/api/matching-engine.md
 docs/api/web.md                        前端对后端的接口依赖（可选）
 
-# 按服务分目录（如 ba-trading，目录带空格）
+# 按服务分目录（服务名可读、可含空格）
 docs/services/<服务名>/api.md   cmd/matching-engine/ → docs/services/Matching Engine/api.md
 ```
 

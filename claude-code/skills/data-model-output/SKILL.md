@@ -17,7 +17,7 @@ when_NOT_to_use: 不涉及持久层结构的改动。
 # 扁平（默认模板）
 docs/data-model/<service>.md            services/matching-engine/ → docs/data-model/matching-engine.md
 
-# 按服务分目录（如 ba-trading，目录带空格）
+# 按服务分目录（服务名可读、可含空格）
 docs/services/<服务名>/数据模型.md   cmd/ledger/ → docs/services/Ledger/数据模型.md
 ```
 

@@ -28,7 +28,7 @@ when_NOT_to_use: 纯注释/文档格式修改，无用户可感知的行为变�
 ## 规则
 
 1. **追加到 `## [Unreleased]`** — 不写版本号，发版时统一替换
-2. **按服务隔离** — 各服务独立的变更记录文件（落点见项目 CLAUDE.md「目录结构」节；默认模板 `docs/changelogs/<service>/CHANGELOG.md`，ba-trading 为 `docs/services/<服务名>/CHANGELOG.md`），多服务变更分别写
+2. **按服务隔离** — 各服务独立的变更记录文件（落点见项目 CLAUDE.md「目录结构」节；默认模板 `docs/changelogs/<service>/CHANGELOG.md`，或按项目约定为 `docs/services/<服务名>/CHANGELOG.md`），多服务变更分别写
 3. **Breaking Changes 单独一节** — 任何影响对外接口或数据结构的改动必须在 `### Breaking` 里标出
 4. **引用 PR/issue 编号** — `(#123)` 便于追溯，PR 提交前可用占位 `(#TBD)` 后补
 5. **时态用过去式** — "修复" 而非 "修复中"；"新增" 而非 "新增了"
