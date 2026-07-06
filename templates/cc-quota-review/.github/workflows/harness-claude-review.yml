@@ -17,7 +17,7 @@ name: AI Review (3 passes, tiered)
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [main]
+    branches: [main]  # gate-branches
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}

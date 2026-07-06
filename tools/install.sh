@@ -21,6 +21,8 @@
 #   --domains <csv>    按业务域选装(finance,web3-solidity)。finance 不自动探测,需显式。
 #   --frontend-platforms <csv>  前端端选择(web,mobile,desktop);缺省探测,探不到则全装。
 #   --list-packs       只列出每个 skill 的 pack 与选中的包集合,不安装。
+#   --gate-branches <csv>  CI/AI-review 触发分支(拦 dev 裸奔);缺省探测该仓存在的
+#                        默认分支 ∪ {dev,develop,test,staging}。例:--gate-branches main,dev,test
 #   --skip-graphify    跳过 graphify 安装尝试(graphify 为可选,不影响其他安装步骤)
 #
 # 设计:幂等。再跑一次只会更新,不破坏用户改动(改了的文件被检测并跳过 + 提示)。
@@ -40,6 +42,7 @@ STACKS=""
 DOMAINS=""
 FE_PLATFORMS=""
 LIST_PACKS=0
+GATE_BRANCHES=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --codex)         USE_CODEX=1 ;;
@@ -51,7 +54,8 @@ while [ $# -gt 0 ]; do
     --domains)       DOMAINS="$2"; shift ;;
     --frontend-platforms) FE_PLATFORMS="$2"; shift ;;
     --list-packs)    LIST_PACKS=1 ;;
-    -h|--help)   sed -n '2,30p' "$0"; exit 0 ;;
+    --gate-branches) GATE_BRANCHES="$2"; shift ;;
+    -h|--help)   sed -n '2,31p' "$0"; exit 0 ;;
     -*)          echo "未知选项 $1" >&2; exit 2 ;;
     *)           TARGET="$1" ;;
   esac
@@ -69,6 +73,7 @@ TARGET="$(cd "$TARGET" && pwd)"
 
 # === 技能包选择(按栈/域 + 探测)===
 . "$SCRIPT_DIR/detect_stacks.sh"
+. "$SCRIPT_DIR/gate_branches.sh"
 
 skill_pack() { sed -n 's/^pack:[[:space:]]*//p' "$1" | head -1; }  # 读某 SKILL.md 的 pack 值(保留 stack:go 里的冒号)
 
@@ -185,6 +190,13 @@ for f in "$SOURCE_DIR"/core/workflows/*.yml; do
   fi
   safe_cp "$f" "$TARGET/${PREFIX}.github/workflows/$base"
 done
+# 门禁分支:把带 "# gate-branches" 标记的 workflow 触发分支改成配置/探测的分支列表
+GB="${GATE_BRANCHES:-$(default_gate_branches "$TARGET")}"
+for wf in "$TARGET/${PREFIX}.github/workflows"/*.yml; do
+  [ -f "$wf" ] && apply_gate_branches "$wf" "$GB"
+done
+ok "门禁分支(CI/AI-review 触发)= [$GB]"
+
 # prompts/
 for f in "$SOURCE_DIR"/core/prompts/*.md; do
   safe_cp "$f" "$TARGET/${PREFIX}prompts/$(basename "$f")"

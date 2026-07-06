@@ -49,6 +49,19 @@ bash "$ROOT/tools/install.sh" "$t" --stacks go --domains finance --skip-graphify
 [ -f "$t/.claude/skills/financial-numerics/SKILL.md" ] && ok "--domains finance:装了 financial" || bad "--domains finance:缺 financial"
 rm -rf "$t"
 
+
+echo "== 3) 门禁分支模板 =="
+t=$(mktemp -d); ( cd "$t" && git init -q -b main && git commit -q --allow-empty -m x && git branch dev && git branch test ); echo "module x" >"$t/go.mod"
+bash "$ROOT/tools/install.sh" "$t" --skip-graphify >/dev/null 2>&1
+grep -q "branches: \[main, dev, test\]" "$t/.github/workflows/ci.yml" && ok "探测到 dev/test → ci.yml 门禁含三分支" || bad "ci.yml 门禁未含 dev/test:$(grep -m1 gate-branches "$t/.github/workflows/ci.yml")"
+grep -q "branches: \[main, dev, test\]" "$t/.github/workflows/ai-review.yml" && ok "ai-review.yml pull_request 门禁含三分支" || bad "ai-review 门禁未含 dev/test"
+rm -rf "$t"
+
+t=$(mktemp -d); ( cd "$t" && git init -q -b main && git commit -q --allow-empty -m x && git branch dev ); echo "module x" >"$t/go.mod"
+bash "$ROOT/tools/install.sh" "$t" --gate-branches main --skip-graphify >/dev/null 2>&1
+grep -q "branches: \[main\]  # gate-branches" "$t/.github/workflows/ci.yml" && ok "--gate-branches main 覆盖:只含 main" || bad "覆盖失败"
+rm -rf "$t"
+
 echo
 echo "== 结果:$pass 通过,$fail 失败 =="
 [ "$fail" = "0" ]
