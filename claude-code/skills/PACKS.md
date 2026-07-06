@@ -3,6 +3,20 @@
 > 每个 SKILL.md 的 frontmatter 必须声明**恰好一个** `pack:` 字段。install.sh 据此按技术栈/业务域选装,
 > 避免把语言/业务特定的 skill 焊死进项目无关的仓库。加新 skill 或新包时,**必须在本表登记**。
 
+## 目录结构
+
+源 skills 按 pack 分类到子目录,便于浏览;install.sh 安装时会**拍平**到目标仓的 `.claude/skills/<name>/`(Claude Code/Codex 按扁平一层发现 skill):
+
+```
+skills/
+  universal/<skill>/
+  stack/{go,node,rust,java,python}/<skill>/
+  frontend/{common,web,mobile,desktop}/<skill>/
+  domain/{finance,web3-solidity}/<skill>/
+```
+
+新增 skill:放到对应 `<category>/<subpack>/<name>/SKILL.md`,frontmatter 的 `pack:` 要与目录一致,并在下方成员表登记。
+
 ## pack 合法值与安装条件
 
 | pack 值 | 含义 | 安装条件 |

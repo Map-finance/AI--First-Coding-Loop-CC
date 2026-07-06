@@ -57,7 +57,7 @@ when_NOT_to_use: <反触发条件,防止越界>
 
 ## 加一个新 skill
 
-1. 在 `skills/<name>/` 下建目录,放 `SKILL.md`
+1. 在 `skills/<category>/<subpack>/<name>/` 下建目录(按 pack 分类,如 `stack/go/`、`frontend/web/`、`universal/`),放 `SKILL.md`
 2. 可选:放配套脚本 `scripts/`、参考 `references/`、资产 `assets/`
 3. 在本 README 表格里加一行
 4. 如果它是被自动化引用的(triage/health/goal_loop),还要在对应 workflow 或脚本里加调用点

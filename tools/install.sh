@@ -102,10 +102,10 @@ pack_selected() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esa
 
 if [ "$LIST_PACKS" = "1" ]; then
   echo "选中的包集合:$SELECTED"
-  for skill in "$SOURCE_DIR"/claude-code/skills/*/; do
-    [ -f "$skill/SKILL.md" ] || continue
-    printf '  %-28s pack=%s\n' "$(basename "$skill")" "$(skill_pack "$skill/SKILL.md")"
-  done
+  # 源 skills 已按 pack 分类到子目录(universal/stack/frontend/domain),递归找 SKILL.md
+  while IFS= read -r skmd; do
+    printf '  %-28s pack=%s\n' "$(basename "$(dirname "$skmd")")" "$(skill_pack "$skmd")"
+  done < <(find "$SOURCE_DIR/claude-code/skills" -name SKILL.md | sort)
   exit 0
 fi
 
@@ -220,19 +220,20 @@ fi
 # === claude-code(skills + agents)===
 if [ "$NO_SKILLS" = "0" ]; then
   say "claude-code/ → $TARGET/$CC_DIR/"
-  for skill in "$SOURCE_DIR"/claude-code/skills/*/; do
-    name="$(basename "$skill")"
-    [ "$name" = "README.md" ] && continue
-    # 按 pack 过滤:有 pack 标签且未被选中 → 跳过(universal 恒选中)
-    pack="$(skill_pack "$skill/SKILL.md" 2>/dev/null || true)"
+  # 源 skills 按 pack 分类到子目录;这里递归找每个 SKILL.md,按 pack 过滤后
+  # **拍平**安装到 .claude/skills/<name>/(Claude Code 按扁平一层发现 skill)。
+  while IFS= read -r skmd; do
+    sdir="$(dirname "$skmd")"
+    name="$(basename "$sdir")"
+    pack="$(skill_pack "$skmd" 2>/dev/null || true)"
     if [ -n "$pack" ] && ! pack_selected "$pack"; then
       skip "跳过 $name(pack=$pack 未在选中集 [$SELECTED] 内)"
       continue
     fi
-    for f in "$skill"*; do
+    for f in "$sdir"/*; do
       safe_cp "$f" "$TARGET/$CC_DIR/skills/$name/$(basename "$f")"
     done
-  done
+  done < <(find "$SOURCE_DIR/claude-code/skills" -name SKILL.md | sort)
   # PACKS.md(包分类单一信源)随 skills 一起铺
   safe_cp "$SOURCE_DIR/claude-code/skills/PACKS.md" "$TARGET/$CC_DIR/skills/PACKS.md"
   for f in "$SOURCE_DIR"/claude-code/agents/*.toml; do
