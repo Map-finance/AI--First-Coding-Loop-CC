@@ -12,6 +12,16 @@
 #                        1 = 直接平铺(适合空仓)
 #                        2 = 主体直接装,保留用户已有 README/Makefile/Dockerfile(默认)
 #                        3 = 装到子目录 .harness/(适合有冲突的仓)
+#   --profile <single|monorepo> 项目形态(默认 monorepo,向后兼容):
+#                        monorepo = 单仓多微服务(apps/ + services/ + docs/services/…)
+#                        single   = 单体单服务(代码在根 + 扁平 docs/,命名无 service scope)
+#                        决定装哪个 CLAUDE.md 变体与哪个 ci.yml。
+#   --stacks <csv>     按技术栈选装 skill 包(go,node,java,rust,python,frontend);
+#                        缺省时自动探测(go.mod/package.json/Cargo.toml…)。universal 恒装。
+#   --domains <csv>    按业务域选装(finance,web3-solidity)。finance 不自动探测,需显式。
+#   --frontend-platforms <csv>  前端端选择(web,mobile,desktop);缺省探测,探不到则全装。
+#   --list-packs       只列出每个 skill 的 pack 与选中的包集合,不安装。
+#   --skip-graphify    跳过 graphify 安装尝试(graphify 为可选,不影响其他安装步骤)
 #
 # 设计:幂等。再跑一次只会更新,不破坏用户改动(改了的文件被检测并跳过 + 提示)。
 # =============================================================================
@@ -24,21 +34,75 @@ TARGET=""
 USE_CODEX=0
 NO_SKILLS=0
 STRATEGY=2
+SKIP_GRAPHIFY=0
+PROFILE=monorepo
+STACKS=""
+DOMAINS=""
+FE_PLATFORMS=""
+LIST_PACKS=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --codex)     USE_CODEX=1 ;;
-    --no-skills) NO_SKILLS=1 ;;
-    --strategy)  STRATEGY="$2"; shift ;;
-    -h|--help)   sed -n '2,20p' "$0"; exit 0 ;;
+    --codex)         USE_CODEX=1 ;;
+    --no-skills)     NO_SKILLS=1 ;;
+    --skip-graphify) SKIP_GRAPHIFY=1 ;;
+    --strategy)      STRATEGY="$2"; shift ;;
+    --profile)       PROFILE="$2"; shift ;;
+    --stacks)        STACKS="$2"; shift ;;
+    --domains)       DOMAINS="$2"; shift ;;
+    --frontend-platforms) FE_PLATFORMS="$2"; shift ;;
+    --list-packs)    LIST_PACKS=1 ;;
+    -h|--help)   sed -n '2,30p' "$0"; exit 0 ;;
     -*)          echo "未知选项 $1" >&2; exit 2 ;;
     *)           TARGET="$1" ;;
   esac
   shift
 done
 
+case "$PROFILE" in
+  single|monorepo) ;;
+  *) echo "未知 --profile '$PROFILE'(合法值:single | monorepo)" >&2; exit 2 ;;
+esac
+
 [ -n "$TARGET" ] || { echo "用法:bash install.sh <target-repo-dir> [选项]" >&2; exit 2; }
 [ -d "$TARGET" ] || { echo "目标目录不存在:$TARGET" >&2; exit 2; }
 TARGET="$(cd "$TARGET" && pwd)"
+
+# === 技能包选择(按栈/域 + 探测)===
+. "$SCRIPT_DIR/detect_stacks.sh"
+
+skill_pack() { sed -n 's/^pack:[[:space:]]*//p' "$1" | head -1; }  # 读某 SKILL.md 的 pack 值(保留 stack:go 里的冒号)
+
+compute_selected() {  # 输出生效的包集合(含 universal)
+  local sel="universal" st dm p plats
+  if [ -n "$STACKS$DOMAINS" ]; then
+    for st in ${STACKS//,/ }; do
+      if [ "$st" = "frontend" ]; then
+        sel="$sel frontend:common"
+        plats="$FE_PLATFORMS"
+        [ -z "$plats" ] && plats="$(detect_stacks "$TARGET" | tr ' ' '\n' | sed -n 's/^frontend:\(web\|mobile\|desktop\)$/\1/p' | tr '\n' ' ')"
+        [ -z "$plats" ] && plats="web mobile desktop"
+        for p in ${plats//,/ }; do sel="$sel frontend:$p"; done
+      else
+        sel="$sel stack:$st"
+      fi
+    done
+    for dm in ${DOMAINS//,/ }; do sel="$sel domain:$dm"; done
+  else
+    sel="$sel $(detect_stacks "$TARGET")"
+  fi
+  printf '%s\n' $sel | grep -v '^$' | sort -u | tr '\n' ' '
+}
+SELECTED="$(compute_selected)"
+pack_selected() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+if [ "$LIST_PACKS" = "1" ]; then
+  echo "选中的包集合:$SELECTED"
+  for skill in "$SOURCE_DIR"/claude-code/skills/*/; do
+    [ -f "$skill/SKILL.md" ] || continue
+    printf '  %-28s pack=%s\n' "$(basename "$skill")" "$(skill_pack "$skill/SKILL.md")"
+  done
+  exit 0
+fi
 
 say() { printf '\033[1;36m▶ %s\033[0m\n' "$*"; }
 ok()  { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
@@ -71,7 +135,35 @@ safe_cp() {
   ok "+ $dst"
 }
 
-say "装到 $TARGET (策略 $STRATEGY,客户端目录 $CC_DIR)"
+# 从变体文件抽取 <!-- SECTION:name --> 到下一个 SECTION 标记(或 EOF)之间的内容
+# 去掉该 section 尾部的连续空行,避免拼接后堆叠多余空行。
+extract_section() {  # extract_section <variant-file> <name>
+  awk -v n="$2" '
+    $0 == "<!-- SECTION:" n " -->" { p=1; next }
+    /^<!-- SECTION:/               { p=0 }
+    p { buf[++i]=$0 }
+    END {
+      while (i>0 && buf[i] ~ /^[[:space:]]*$/) i--
+      for (j=1; j<=i; j++) print buf[j]
+    }
+  ' "$1"
+}
+
+# 把 common 模板里的 <!-- @VARIANT:name --> 占位替换为变体文件对应 section,输出到 stdout
+render_claude() {  # render_claude <common-file> <variant-file>
+  local common="$1" variant="$2" line name
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      '<!-- @VARIANT:'*' -->')
+        name="${line#<!-- @VARIANT:}"; name="${name% -->}"
+        extract_section "$variant" "$name"
+        ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done < "$common"
+}
+
+say "装到 $TARGET (策略 $STRATEGY,形态 $PROFILE,客户端目录 $CC_DIR)"
 
 # === core ===
 say "core/ → 目标仓"
@@ -80,8 +172,18 @@ for f in "$SOURCE_DIR"/core/scripts/*; do
   safe_cp "$f" "$TARGET/${PREFIX}scripts/$(basename "$f")"
 done
 # .github/workflows/
+# ci.yml 按 profile 选源(monorepo → ci.yml,single → ci.single.yml),统一落成 ci.yml;
+# ci.single.yml 本身不单独铺(它只是 single 的 ci.yml 源)。其余 workflow 两形态通用,照铺。
 for f in "$SOURCE_DIR"/core/workflows/*.yml; do
-  safe_cp "$f" "$TARGET/${PREFIX}.github/workflows/$(basename "$f")"
+  base="$(basename "$f")"
+  [ "$base" = "ci.single.yml" ] && continue
+  if [ "$base" = "ci.yml" ]; then
+    src_ci="$f"
+    [ "$PROFILE" = "single" ] && src_ci="$SOURCE_DIR/core/workflows/ci.single.yml"
+    safe_cp "$src_ci" "$TARGET/${PREFIX}.github/workflows/ci.yml"
+    continue
+  fi
+  safe_cp "$f" "$TARGET/${PREFIX}.github/workflows/$base"
 done
 # prompts/
 for f in "$SOURCE_DIR"/core/prompts/*.md; do
@@ -109,19 +211,31 @@ if [ "$NO_SKILLS" = "0" ]; then
   for skill in "$SOURCE_DIR"/claude-code/skills/*/; do
     name="$(basename "$skill")"
     [ "$name" = "README.md" ] && continue
+    # 按 pack 过滤:有 pack 标签且未被选中 → 跳过(universal 恒选中)
+    pack="$(skill_pack "$skill/SKILL.md" 2>/dev/null || true)"
+    if [ -n "$pack" ] && ! pack_selected "$pack"; then
+      skip "跳过 $name(pack=$pack 未在选中集 [$SELECTED] 内)"
+      continue
+    fi
     for f in "$skill"*; do
       safe_cp "$f" "$TARGET/$CC_DIR/skills/$name/$(basename "$f")"
     done
   done
+  # PACKS.md(包分类单一信源)随 skills 一起铺
+  safe_cp "$SOURCE_DIR/claude-code/skills/PACKS.md" "$TARGET/$CC_DIR/skills/PACKS.md"
   for f in "$SOURCE_DIR"/claude-code/agents/*.toml; do
     safe_cp "$f" "$TARGET/$CC_DIR/agents/$(basename "$f")"
   done
   # CLAUDE.md 只在目标仓没有时装(它太关键,不允许自动覆盖)
+  # 由 common 模板 + <profile> 变体拼接生成(见 templates/)。
   if [ ! -f "$TARGET/CLAUDE.md" ]; then
-    cp "$SOURCE_DIR/claude-code/CLAUDE.md.template" "$TARGET/CLAUDE.md"
-    ok "+ CLAUDE.md(从模板,你需要替换占位)"
+    render_claude \
+      "$SOURCE_DIR/claude-code/templates/CLAUDE.common.md" \
+      "$SOURCE_DIR/claude-code/templates/CLAUDE.$PROFILE.md" \
+      > "$TARGET/CLAUDE.md"
+    ok "+ CLAUDE.md(profile=$PROFILE,你需要替换占位)"
   else
-    skip "CLAUDE.md 已存在,跳过(请手动 merge claude-code/CLAUDE.md.template 的新增内容)"
+    skip "CLAUDE.md 已存在,跳过(请手动 merge claude-code/templates/CLAUDE.{common,$PROFILE}.md 的新增内容)"
   fi
   # .claude/settings.json:仅在目标仓没有时装(含 skill-reminder hook)
   if [ ! -f "$TARGET/$CC_DIR/settings.json" ]; then
@@ -160,6 +274,44 @@ if [ -d "$TARGET/.git" ]; then
   ok "+ .git/hooks/pre-commit(提交前自检,调项目 precommit 入口)"
 fi
 
+# === Graphify 知识图谱(可选,best-effort 安装)===
+# install.sh 会尝试安装 graphify 并接入(CLAUDE.md 规则 / PreToolUse hook / 自动更新 git hook)。
+# graphify 为可选:装不上不阻塞安装(只提示);--skip-graphify 可跳过整段。
+# 初始图谱(graphify build)需 LLM key,缺 key 时跳过,留待项目内配好 key 后再跑。
+if [ "$SKIP_GRAPHIFY" = "0" ]; then
+  say "Graphify 知识图谱 → 尝试安装 + 接入(可选)"
+  if ! command -v graphify >/dev/null 2>&1; then
+    if command -v pipx >/dev/null 2>&1; then
+      pipx install graphifyy >/dev/null 2>&1 || true
+    elif command -v pip3 >/dev/null 2>&1; then
+      pip3 install --user graphifyy >/dev/null 2>&1 || true
+    elif command -v pip >/dev/null 2>&1; then
+      pip install --user graphifyy >/dev/null 2>&1 || true
+    fi
+  fi
+  if command -v graphify >/dev/null 2>&1; then
+    if ( cd "$TARGET" && graphify claude install ) >/dev/null 2>&1; then
+      ok "graphify claude install(CLAUDE.md 规则 + PreToolUse hook)"
+    else
+      skip "graphify claude install 告警——请在项目内手动跑一次"
+    fi
+    if ( cd "$TARGET" && graphify hook install ) >/dev/null 2>&1; then
+      ok "graphify hook install(post-commit/post-checkout 自动更新)"
+    else
+      skip "graphify hook install 告警——请在项目内手动跑一次"
+    fi
+    if ( cd "$TARGET" && graphify build ) >/dev/null 2>&1; then
+      ok "graphify build → graphify-out/ 初始图谱已生成"
+    else
+      skip "graphify build 未出图(通常缺 LLM key)——配好 key 后在项目内跑 'graphify build' 并提交 graphify-out/"
+    fi
+  else
+    skip "graphify 未安装且无法自动安装(缺 pipx/pip 或网络)——可选,跳过。想启用:pipx install graphifyy 后重跑,或在项目内跑 graphify build。"
+  fi
+else
+  skip "Graphify 安装被 --skip-graphify 跳过(graphify 为可选)。"
+fi
+
 cat <<EOF
 
 ============================================================
@@ -169,8 +321,9 @@ cat <<EOF
   1. 编辑 CLAUDE.md 把 [占位] 换成项目真实信息
   2. 编辑 ${PREFIX}.github/workflows/ci.yml 注释掉用不到的语言 job
   3. 在 GitHub Repo Settings 配 LLM_PROVIDER + LLM_API_KEY(详见 docs/多模型适配.md)
-  4. 给本仓(及 docs-repo)开分支保护:bash tools/setup-branch-protection.sh <owner/repo>
-  5. 跑 bash tools/verify.sh 做 5 项 sanity
-  6. 推到分支 + 开 draft PR,自己 review 后再合 main
+  4. 生成知识图谱(可选):配好 key 后跑 graphify build,把 graphify-out/ 提交进仓库
+  5. 给本仓(及 docs-repo)开分支保护:bash tools/setup-branch-protection.sh <owner/repo>
+  6. 跑 bash tools/verify.sh 做 5 项 sanity
+  7. 推到分支 + 开 draft PR,自己 review 后再合 main
 ============================================================
 EOF
