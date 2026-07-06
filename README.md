@@ -33,7 +33,7 @@ AI--First-Coding-Loop-CC/
 ├── claude-code/          🤖 Claude Code / Codex CLI 专属(SKILL + agent TOML)
 │   ├── skills/              9 个按域拆分的 skill(含 task-decomposer / parallel-orchestrator)
 │   ├── agents/              9 个 sub-agent TOML(含 subtask-implementer / merger)
-│   └── CLAUDE.md.template   根上下文模板(拷到你的项目根)
+│   └── templates/          根上下文模板(按形态拼接):CLAUDE.common.md + CLAUDE.{single,monorepo}.md
 │
 ├── handoffs/             📋 接力包模板(给 Claude Code 等"代你执行"的助手)
 │   ├── README.md
@@ -94,18 +94,31 @@ bash <(curl -sSL https://raw.githubusercontent.com/WILLcis/AI--First-Coding-Loop
 # 在你的目标仓库根目录
 TARGET=$(pwd)
 git clone https://github.com/WILLcis/AI--First-Coding-Loop-CC /tmp/aifcl
-bash /tmp/aifcl/tools/install.sh "$TARGET"
+bash /tmp/aifcl/tools/install.sh "$TARGET"                    # 默认 monorepo 形态
+# 单体项目(一个仓一个服务,代码在根)用:
+bash /tmp/aifcl/tools/install.sh "$TARGET" --profile single
+# 按技术栈选装(不指定=自动探测 go.mod/package.json 等);dev 也纳入门禁:
+bash /tmp/aifcl/tools/install.sh "$TARGET" --stacks go --gate-branches main,dev
+bash /tmp/aifcl/tools/install.sh "$TARGET" --stacks frontend --frontend-platforms web,mobile
+bash /tmp/aifcl/tools/install.sh "$TARGET" --list-packs   # 预览会装哪些包
 ```
+
+**项目形态(`--profile`)**——决定装哪个 CLAUDE.md 变体与哪个 CI:
+
+| profile | 适用 | 目录约定 | 分支命名 | CI |
+|---|---|---|---|---|
+| `monorepo`(默认) | 单仓多微服务 | `apps/` + `services/` + `docs/services/<服务>/` | `<type>/<service>/<desc>` | `ci.yml` |
+| `single` | 单体单服务 | 代码在根 + 扁平 `docs/` | `<type>/<desc>`(无 service 段) | `ci.single.yml` |
 
 `install.sh` 会把 `core/` 内容铺到目标仓的对应位置:
 - `core/scripts/` → `scripts/`
-- `core/workflows/` → `.github/workflows/`
+- `core/workflows/` → `.github/workflows/`(其中 `ci.yml` 按 profile 选 `ci.yml`/`ci.single.yml`)
 - `core/prompts/` → `prompts/`
 - `core/flags/` → `flags/`
 - `core/state/` → `state/`
 - `claude-code/skills/` → `.claude/skills/`(若你用 Claude Code)
 - `claude-code/agents/` → `.claude/agents/`(若你用 Claude Code 或 Codex)
-- `claude-code/CLAUDE.md.template` → `CLAUDE.md`(若不存在)
+- `claude-code/templates/CLAUDE.{common,<profile>}.md` → 拼接为 `CLAUDE.md`(若不存在)
 
 ### 姿势 2:**git subtree**(想跟上游同步更新)
 
