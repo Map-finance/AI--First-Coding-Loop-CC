@@ -1,5 +1,6 @@
 ---
 name: sql-optimization
+pack: universal
 description: 审查与编写数据库查询时避免性能陷阱——确保命中索引、消除 N+1、禁止全表扫描与 SELECT *、强制分页、控制事务范围。涉及 SQL/ORM 的改动必走。
 when_to_use: implementer 写涉及数据库查询/ORM 的代码时；review 阶段 PR 触及 SQL、Repository、DAO、迁移脚本时。
 when_NOT_to_use: 纯前端、纯文档、与持久层无关的改动。

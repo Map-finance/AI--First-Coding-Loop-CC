@@ -1,5 +1,6 @@
 ---
 name: parallel-orchestrator
+pack: universal
 description: 主 session 拿到 task-decomposer 的 DAG 后,执行 fan-out → fan-in → 整合的回路。利用 Claude Code 的 Task tool —— 一条消息发 N 个 Task 调用 = 真并行,不需要人工开多窗口、不需要 SDK。
 when_to_use: decomposition.json 写好且用户确认后,主 session 走到"我现在该实施了"那一步。
 when_NOT_to_use: 单任务(没有并行子任务)—— 直接走 implementer。

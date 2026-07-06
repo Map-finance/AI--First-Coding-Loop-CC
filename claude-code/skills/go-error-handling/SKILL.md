@@ -1,5 +1,6 @@
 ---
 name: go-error-handling
+pack: stack:go
 description: Go错误处理规范——哨兵错误定义、errors.Is/As包装链、禁字符串匹配、资金/账本错误绝不吞须进保护模式。
 when_to_use: 新增或修改Go错误处理逻辑，或涉及资金/账本/结算操作时。
 when_NOT_to_use: 非Go代码，或与错误处理无关的改动。

@@ -1,5 +1,6 @@
 ---
 name: pr-investigator
+pack: universal
 description: 对一张由 triage 引擎自动建的 Linear/Issue 工单做根因调查——读样本日志、相关代码、最近 PR,产出"3~5 条可执行的下一步"。triage cron 跑完后给每个新工单触发一次。
 when_to_use: 收到含 [fp:xxxx] 指纹标记的自动工单时;架构师把工单分配给操作员之前;goal_loop 跑修复回路时的第一拍。
 when_NOT_to_use: 工单严重度 < 0.35 阈值(triage 已过滤);工单已有人接手并提交 PR 时。

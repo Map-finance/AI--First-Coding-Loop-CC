@@ -1,5 +1,6 @@
 ---
 name: go-observability
+pack: stack:go
 description: Go可观测性规范——OTel span和Prometheus埋点位置在adapter/middleware层，业务层domain/app不直接写trace/metrics代码。
 when_to_use: 新增服务、新增外部调用（DB/gRPC/Kafka/HTTP）、或修改请求处理链路时。
 when_NOT_to_use: 纯业务逻辑修改且不涉及新的外部调用或新请求路径。

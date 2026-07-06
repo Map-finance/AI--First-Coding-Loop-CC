@@ -1,5 +1,6 @@
 ---
 name: secure-coding
+pack: universal
 description: 审查与编写代码时的应用级安全判断——参数化输入、鉴权与授权分离、越权(IDOR)零容忍、密钥不入代码、日志不泄露 PII/凭证、防 SSRF/CSRF/不安全反序列化。
 when_to_use: 任何处理用户输入、鉴权授权、外部请求、序列化、日志输出的改动；review 阶段 security 趟。
 when_NOT_to_use: 纯样式/文案/与数据流无关的改动。

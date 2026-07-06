@@ -1,5 +1,6 @@
 ---
 name: clean-code
+pack: universal
 description: 审查与编写代码整洁度——函数职责单一且短小、控制圈复杂度与嵌套、消除重复(DRY)、统一抽象层级、删除死代码与魔法值。
 when_to_use: 任何写码/重构；review 阶段 quality 趟。
 when_NOT_to_use: 纯配置/文档。

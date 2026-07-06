@@ -1,5 +1,6 @@
 ---
 name: performance-review
+pack: universal
 description: 审查与编写代码时的性能、韧性与可观测性判断——外部调用必须有超时/重试退避/熔断降级/幂等、接口限流与分页、缓存正确性、并发安全与资源释放、结构化日志与异常埋点。
 when_to_use: 涉及外部接口调用、并发/异步、缓存、热路径、日志与监控的改动；review 阶段 performance 趟。
 when_NOT_to_use: 纯静态文案、与运行时行为无关的改动。

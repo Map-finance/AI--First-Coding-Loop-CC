@@ -1,5 +1,6 @@
 ---
 name: agent-coding-discipline
+pack: universal
 description: 写码 agent 的行为纪律——读再写、想再做、最小改动、调试不靠猜、依赖不乱加、说明白做了什么。10 条规则 + 4 个常见失败模式 + 8 项 pre-submit 自检。任何 implementer/explorer/verifier 在写或评码前先吃这份。
 when_to_use: 所有 implementer 类 agent 在动手写代码前必读;explorer agent 探查时遵循;verifier 评审时按这些规则扫问题。
 when_NOT_to_use: 这份是"行为规则",不是"任务规约"——具体功能要做什么仍由 architect-task-writer skill 产出的任务文档定义。

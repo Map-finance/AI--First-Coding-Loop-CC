@@ -1,5 +1,6 @@
 ---
 name: weekly-comprehension-check
+pack: universal
 description: 架构师每周自检——抽 3~5 个本周合并的 PR,用一句话写它做了什么 + 说出一个潜在风险。抽不出来 = 你已经在认知投降。结果写入 state/comprehension-log.jsonl,被 daily-health 周度报告引用。
 when_to_use: 每周一架构师的第一件事(daily-health 周一会自动 ping 提醒);或合并量首次超过历史 1.5 倍那一周。
 when_NOT_to_use: 不要让 agent 替你做这件事——本 skill 的全部价值在于"你亲手做",代做就是骗自己。

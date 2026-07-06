@@ -1,5 +1,6 @@
 ---
 name: changelog-output
+pack: universal
 description: 任意功能变更、bug修复、接口改动完成后，生成PR前必须在对应服务的变更记录文件追加条目——keep-a-changelog格式，落点见项目 CLAUDE.md「目录结构」节。
 when_to_use: 任何有用户可感知行为变化的改动完成后，生成PR草稿前。
 when_NOT_to_use: 纯注释/文档格式修改，无用户可感知的行为变化。

@@ -1,5 +1,6 @@
 ---
 name: design-patterns
+pack: universal
 description: 审查与设计代码结构——选择恰当的设计模式与抽象，避免过度设计（YAGNI），依赖倒置便于测试，保持模块边界清晰。
 when_to_use: 新增模块/服务/较大组件、引入抽象或框架时；review 阶段 quality 趟。
 when_NOT_to_use: 小改动、bug 修复。

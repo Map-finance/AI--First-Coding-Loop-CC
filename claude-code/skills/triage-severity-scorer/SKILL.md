@@ -1,5 +1,6 @@
 ---
 name: triage-severity-scorer
+pack: universal
 description: 给一个错误簇按九个维度打 0~1 分,再用权重合成严重度。triage 引擎的核心评分器,被 triage_engine.py 自动调用;也可被 architect 手动调用复核某张工单的分数。
 when_to_use: triage_engine 处理每个错误簇时;架构师怀疑某工单"被低估"或"被夸大"想复核时。
 when_NOT_to_use: 不要用它来"决定要不要建单"——那是阈值 + 历史去重的事,只用分数排序与触发不同响应级别。

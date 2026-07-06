@@ -1,5 +1,6 @@
 ---
 name: naming-convention
+pack: universal
 description: 审查与编写标识符命名——名字要表意（揭示意图与领域术语），与团队词汇表一致，避免缩写歧义与误导性命名。格式类规则（大小写）由 linter 管，本 skill 管语义。
 when_to_use: 新增/重命名函数、变量、类型、模块、接口字段时；review 阶段 quality 趟。
 when_NOT_to_use: 仅格式调整（交给 linter）。

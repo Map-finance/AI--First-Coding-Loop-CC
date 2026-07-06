@@ -1,5 +1,6 @@
 ---
 name: financial-numerics
+pack: domain:finance
 description: 涉及金额、价格、余额、交易、token数量的改动时的数值安全规范——禁用浮点，Go用Decimal18+Dec两类型，token.Decimals来自DB不硬编码，明确舍入方向。
 when_to_use: 改动涉及金额/价格/余额/手续费/利率/token数量计算，或前端展示金额时。
 when_NOT_to_use: 与金额无关的改动（这是轻量提示 skill，不要泛用）。

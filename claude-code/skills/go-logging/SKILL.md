@@ -1,5 +1,6 @@
 ---
 name: go-logging
+pack: stack:go
 description: 涉及Go日志输出的改动时的结构化日志规范——只用slog，禁zap/zerolog/fmt.Print*，字段snake_case，context贯穿，慢路径固定格式，风暴防护，PII脱敏。
 when_to_use: 新增或修改任何Go日志输出代码时。
 when_NOT_to_use: 非Go项目，或与日志无关的改动。

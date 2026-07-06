@@ -1,5 +1,6 @@
 ---
 name: api-endpoint-creator
+pack: universal
 description: 给一个服务加一个新 HTTP 端点的标准做法——契约/鉴权/结构化日志/错误形态/特性开关/集成测试/Sentry/CLAUDE.md 校验全一条龙。implementer agent 写新端点时必走。
 when_to_use: implementer agent 看到任务里有"新增 GET/POST/PUT /v1/<resource>"或"加一个 webhook"时。
 when_NOT_to_use: 改已有端点的内部逻辑而不动签名时(走 implementer 默认流程即可);RPC/gRPC/GraphQL 走各自专门 skill(暂未提供)。

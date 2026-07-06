@@ -1,5 +1,6 @@
 ---
 name: api-doc-output
+pack: universal
 description: 改动 HTTP/RPC 接口时强制同步更新接口文档——落点见项目 CLAUDE.md「目录结构」节，记录路径、方法、入参/出参、错误码、鉴权要求。
 when_to_use: 新增/修改/删除任何对外接口、请求或响应结构、错误码时。
 when_NOT_to_use: 仅内部函数重构、不影响对外契约。

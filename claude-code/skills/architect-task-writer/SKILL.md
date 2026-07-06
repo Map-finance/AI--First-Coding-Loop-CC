@@ -1,5 +1,6 @@
 ---
 name: architect-task-writer
+pack: universal
 description: 把一个粗粒度的功能想法写成结构化任务 prompt——含目标、上下文、范围、可测验收、约束、特性开关、灰度计划。架构师把任务交给 implementer agent 前用这个,作为新功能路径的第 1 步。
 when_to_use: 用户说"加一个功能 / 我要做 X / 帮我规划一个改动"且尚未给出结构化任务定义时;或在 PR 描述里看到自由文本任务时,先用本 skill 把它结构化再让 implementer 上。
 when_NOT_to_use: 已经是结构化任务(目标/约束/验收俱全)时直接交给 implementer;纯 bug 修复走 pr-investigator。

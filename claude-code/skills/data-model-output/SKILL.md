@@ -1,5 +1,6 @@
 ---
 name: data-model-output
+pack: universal
 description: 改动数据库表结构/数据模型时强制同步更新数据定义文档——落点见项目 CLAUDE.md「目录结构」节，记录表/字段/类型/索引/约束/迁移说明。
 when_to_use: 新增/修改表、字段、索引、约束、迁移脚本时。
 when_NOT_to_use: 不涉及持久层结构的改动。

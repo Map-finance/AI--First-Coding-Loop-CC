@@ -1,5 +1,6 @@
 ---
 name: commenting
+pack: universal
 description: 审查与编写注释——注释解释"为什么"（决策、权衡、陷阱）而非复述"做什么"；公共 API 有用途说明；删除注释掉的死代码。
 when_to_use: 新增/修改有非显然逻辑、权衡决策、外部约束的代码时；review 阶段 quality 趟。
 when_NOT_to_use: 自解释的简单代码不必强加注释。

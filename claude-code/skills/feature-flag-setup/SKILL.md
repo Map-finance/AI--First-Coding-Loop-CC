@@ -1,5 +1,6 @@
 ---
 name: feature-flag-setup
+pack: universal
 description: 给一个新功能加一个完整的特性开关——登记 flag、设保守默认值、依赖注入而非吃单例、配灰度规则、文档化 kill switch、合并前写一条证明 kill 生效的测试。每个新功能上线前必走。
 when_to_use: implementer agent 收到带 flag 约束的任务时；架构师任务模板提到新 flag 时；或 review 阶段发现 PR 没把功能藏在开关后时。
 when_NOT_to_use: 改的是已有 flag 的灰度参数（那是 ops 动作，不走 PR）。

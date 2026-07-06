@@ -1,5 +1,6 @@
 ---
 name: testing-standards
+pack: universal
 description: 审查与编写测试——覆盖边界与异常路径、测行为而非实现细节、避免脆弱测试、关键路径有集成/契约测试、测试可读。
 when_to_use: 新增/修改功能时写测试；review 阶段 quality 趟检查测试质量。
 when_NOT_to_use: 纯文档改动。

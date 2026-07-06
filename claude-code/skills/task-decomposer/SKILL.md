@@ -1,5 +1,6 @@
 ---
 name: task-decomposer
+pack: universal
 description: 主 session 收到需求后第一件事——判断是否可并行分解。输出 DAG(JSON),节点=子任务,边=强依赖。判定保守:有疑虑就串行(并行错的代价远大于串行慢)。
 when_to_use: 用户提出任何"加 X / 改 Y / 实现 Z"的需求时,architect-task-writer 之前先跑这一步。
 when_NOT_to_use: 已经是单文件 typo 修复 / 单测试调整 / 单文档改这种明显原子操作;复用现有 skill 的标准化任务(feature-flag-setup 等)。
