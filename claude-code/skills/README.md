@@ -11,6 +11,8 @@
 
 ## 当前 skills
 
+> **完整包清单(66 个 skill / 12 个 pack)见 [`PACKS.md`](PACKS.md)** —— 按技术栈(go/node/java/rust/python/frontend)与业务域(finance/web3-solidity)分包,install.sh 按 `--stacks/--domains` 或探测选装。下表仅列常驻/通用核心 skill。
+
 | 名字 | 何时用 | 谁触发 |
 |---|---|---|
 | **`task-decomposer`** ★v2.6 | **主 session 收到需求第一件事**——判断可否并行分解,输出 DAG | 主 session |

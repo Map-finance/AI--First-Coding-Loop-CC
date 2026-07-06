@@ -37,10 +37,18 @@
 
 ## 当前各包成员
 
-- **universal**(20):agent-coding-discipline、clean-code、naming-convention、commenting、design-patterns、secure-coding、testing-standards、performance-review、sql-optimization、feature-flag-setup、architect-task-writer、task-decomposer、parallel-orchestrator、pr-investigator、triage-severity-scorer、weekly-comprehension-check、api-endpoint-creator、api-doc-output、data-model-output、changelog-output
-- **stack:go**(3):go-logging、go-error-handling、go-observability
+- **universal**(20):agent-coding-discipline、api-doc-output、api-endpoint-creator、architect-task-writer、changelog-output、clean-code、commenting、data-model-output、design-patterns、feature-flag-setup、naming-convention、parallel-orchestrator、performance-review、pr-investigator、secure-coding、sql-optimization、task-decomposer、testing-standards、triage-severity-scorer、weekly-comprehension-check
+- **stack:go**(3):go-error-handling、go-logging、go-observability
+- **stack:node**(5):node-async-discipline、node-error-handling、node-logging、node-middleware、node-observability
+- **stack:rust**(4):rust-concurrency、rust-error-handling、rust-logging、rust-ownership-discipline
+- **stack:java**(4):java-error-handling、java-logging、java-observability、java-spring-patterns
+- **stack:python**(4):python-error-handling、python-logging、python-observability、python-typing
+- **frontend:common**(7):fe-accessibility、fe-component-structure、fe-error-boundary、fe-form-validation、fe-i18n、fe-perf-budget、fe-state-management
+- **frontend:web**(4):web-core-vitals、web-hydration、web-rendering-strategy、web-seo
+- **frontend:mobile**(5):mobile-list-perf、mobile-native-permissions、mobile-navigation、mobile-offline-state、mobile-platform-parity
+- **frontend:desktop**(4):desktop-auto-update、desktop-ipc-security、desktop-native-integration、desktop-packaging
 - **domain:finance**(1):financial-numerics
-- **frontend:\* / stack:{node,rust,java,python} / domain:web3-solidity**:待补(见 `docs/superpowers/plans/2026-07-06-harness-modular-install.md` Phase 4)
+- **domain:web3-solidity**(5):sol-arithmetic-safety、sol-gas-optimization、sol-security、sol-testing、sol-upgradeability
 
 ## 安装示例
 
