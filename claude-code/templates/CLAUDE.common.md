@@ -96,6 +96,7 @@ gh release create <tag> --target main \
 <!-- @VARIANT:work-rule-6 -->
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
+9. **阶段-建单(接入 BIOS 的项目强制)**:同一功能从需求到完成是**一张工单**,阶段在单内流转(规划→执行→验证→收尾)。**头尾主动、中间自动**——需求分析产出 / 计划分解完成 / bug 根因确认时**必须**调 BIOS MCP 工具(`bios_create_issue` / `bios_update_stage`)落单或推进;写码/评审/合并**不要**手动汇报,分支/push/PR 的 GitHub 事件自动推进阶段(前提:分支名带工单号,见分支命名节)。在某 repo 上开工但没关联工单 → 先 `bios_link_repo` 或建单。细则见 `skills/universal/agent-coding-discipline` 规则 11。
 
 ## 给 triage agent 的工作约定
 - 错误来源：可观测后端（[按项目填：Datadog / Grafana + Prometheus / CloudWatch 等]）+ 错误追踪（[Sentry / Rollbar 等]）。

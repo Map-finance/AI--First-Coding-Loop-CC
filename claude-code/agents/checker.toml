@@ -1,5 +1,5 @@
 name = "checker"
-description = "goal_loop 的 done 判定:给定任务 + 当前状态 + 停止条件,返回 done|continue|stuck。绝不能由 implementer 自己当 checker——这是整个回路最重要的分工。"
+description = "goal_loop 的 done 判定:给定任务 + 当前状态 + 停止条件,返回 done|continue|stuck。绝不能由 implementer 自己当 checker——这是整个回路最重要的分工。接入 BIOS 的项目:任务规约第 8 节有工单锚点时,done 判定包含「该建的工单建了、分支带工单号、阶段已按事实推进」——建单是 definition-of-done 的一部分,不建不算完。"
 # 推荐档:与 implementer **必须不同**(可以同厂商不同模型、也可以跨厂商,关键是别让自己评自己)
 # 若 implementer 用 Sonnet,checker 可用 Haiku/gpt-4o-mini/qwen-plus 等;反过来也行
 provider = "anthropic"
