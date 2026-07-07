@@ -81,6 +81,7 @@ when_NOT_to_use: 这份是"行为规则",不是"任务规约"——具体功能�
 - 一个功能一张工单,阶段在单内流转(规划→执行→验证→收尾);bug 单必须带根因三件套(file:line 证据、复现步骤、可证伪断言)并关联功能主单。
 - 分支命名带工单号:`<type>/<service>/<ISSUE-KEY>-<slug>`(无服务路由的仓库省略 service 段);带不了 key 就在 commit 尾加 trailer `BIOS-ISSUE: <KEY>`——这是 GitHub 事件归因的锚点。
 - 会话在某 repo 上工作但没有关联工单时,先调 `bios_link_repo`(或直接建单)再开工。未接入 BIOS 的项目跳过本条。
+- **怎么调**:优先用 MCP 工具(客户端工具列表里的 `bios_create_issue` / `bios_update_stage` / `bios_report_progress` / `bios_link_repo`,由 deepdog daemon 注入,参数看工具的 inputSchema)。**工具列表里没有这些工具时**(如 Claude Code 未注入、daemon 未运行),用 deepdog CLI 等价命令兜底:`deepdog issue create --title "..." --description "..."` 建单、`deepdog issue metadata set <ISSUE-KEY> deepdog_work_stage <plan_assign|execute|verify|close>` 推阶段。CLI 也没有 → 在产出物里明确写「待补工单」,不要静默跳过。
 
 ---
 
