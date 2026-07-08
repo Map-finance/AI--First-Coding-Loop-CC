@@ -1,7 +1,7 @@
 ---
 name: agent-coding-discipline
 pack: universal
-description: 写码 agent 的行为纪律——读再写、想再做、最小改动、调试不靠猜、依赖不乱加、说明白做了什么。11 条规则 + 4 个常见失败模式 + 8 项 pre-submit 自检。任何 implementer/explorer/verifier 在写或评码前先吃这份。
+description: 写码 agent 的行为纪律——读再写、想再做、最小改动、调试不靠猜、依赖不乱加、说明白做了什么。10 条规则 + 4 个常见失败模式 + 8 项 pre-submit 自检。任何 implementer/explorer/verifier 在写或评码前先吃这份。
 when_to_use: 所有 implementer 类 agent 在动手写代码前必读;explorer agent 探查时遵循;verifier 评审时按这些规则扫问题。
 when_NOT_to_use: 这份是"行为规则",不是"任务规约"——具体功能要做什么仍由 architect-task-writer skill 产出的任务文档定义。
 ---
@@ -75,14 +75,6 @@ when_NOT_to_use: 这份是"行为规则",不是"任务规约"——具体功能�
 - **并行时:只有真正卡到人工决断的那个子 session 停下来等人;其余不需要中断的子 session 照常继续开发**——别因一个 sub-agent 卡住就把整批停掉。
 - 反面(= 空停,禁止):做完一小步就问"要不要我继续?";把能自己定的小选择(命名 / 默认值 / 等价实现)抛给人。凡是能从需求、代码、合理默认推出的,直接做下去。
 
-## 11. 阶段-建单(Stage tracking,接入 BIOS 的项目强制)
-
-- **头尾主动、中间自动**:需求分析产出 / 计划分解完成 / bug 根因确认——这三类「只存在于对话里的东西」**必须**调 BIOS MCP 工具落成工单(`bios_create_issue`)或推进阶段(`bios_update_stage`);开发中的写码/评审/合并**禁止**手动汇报——分支/push/PR 的 GitHub 事件会自动推进工单阶段。
-- 一个功能一张工单,阶段在单内流转(规划→执行→验证→收尾);bug 单必须带根因三件套(file:line 证据、复现步骤、可证伪断言)并关联功能主单。
-- 分支命名带工单号:`<type>/<service>/<ISSUE-KEY>-<slug>`(无服务路由的仓库省略 service 段);带不了 key 就在 commit 尾加 trailer `BIOS-ISSUE: <KEY>`——这是 GitHub 事件归因的锚点。
-- 会话在某 repo 上工作但没有关联工单时,先调 `bios_link_repo`(或直接建单)再开工。未接入 BIOS 的项目跳过本条。
-- **怎么调**:优先用 MCP 工具(客户端工具列表里的 `bios_create_issue` / `bios_update_stage` / `bios_report_progress` / `bios_link_repo`,由 deepdog daemon 注入,参数看工具的 inputSchema)。**工具列表里没有这些工具时**(如 Claude Code 未注入、daemon 未运行),用 deepdog CLI 等价命令兜底:`deepdog issue create --title "..." --description "..."` 建单、`deepdog issue metadata set <ISSUE-KEY> deepdog_work_stage <plan_assign|execute|verify|close>` 推阶段。CLI 也没有 → 在产出物里明确写「待补工单」,不要静默跳过。
-
 ---
 
 ## 4 个常见失败模式(发现自己掉进去,**停下来,不要硬上**)
@@ -125,6 +117,6 @@ verifier-quality 评审时,**显式扫这 4 个失败模式**,见到就 BLOCK:
 
 ## 反模式(BLOCK 自己)
 
-- ❌ 把 11 条规则当作"建议",真写起来跳过——规则就是给"赶时间想跳过"那一刻准备的
+- ❌ 把 10 条规则当作"建议",真写起来跳过——规则就是给"赶时间想跳过"那一刻准备的
 - ❌ 让评审 agent / 同事替你过 checklist——那是放弃**写码者第一责任**
 - ❌ 因为 deadline 紧把 fail-first 测试跳过——bug 永远会回归,你只是把它推到下次冲刺
