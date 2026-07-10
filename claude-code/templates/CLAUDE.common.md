@@ -100,7 +100,11 @@ gh release create <tag> --target main \
 <!-- @VARIANT:work-rule-6 -->
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
-9. **有 BIOS 工单号时,阶段各自出 PR(可选,别攒到最后一次性交)**:需求/方案讨论定稿 → 开一个**计划 PR**(落地方案文档,分支/标题带工单号,如 `docs/plan/<KEY>-slug`,把工单推进到 plan_assign);开发完成 → 开**实现 PR**(`feat/<service>/<KEY>-slug`);测试补齐或修 bug → 开**测试/修复 PR**(`fix/<service>/<KEY>-slug`)。分支名/PR 标题带工单号是 GitHub 事件自动推进工单阶段的锚点(见分支命名节),照常**不用手动汇报进度**。没有工单号 / 未接入 BIOS → 按原节奏走,不强制拆 PR。
+9. **有 BIOS 工单号时,阶段各自出 PR + 阶段末显式报 stage/进度(可选,别攒到最后一次性交)**:需求/方案讨论定稿 → 开一个**计划 PR**(落地方案文档,分支/标题带工单号,如 `docs/plan/<KEY>-slug`,把工单推进到 plan_assign);开发完成 → 开**实现 PR**(`feat/<service>/<KEY>-slug`);测试补齐或修 bug → 开**测试/修复 PR**(`fix/<service>/<KEY>-slug`)。分支名/PR 标题带工单号是 GitHub 事件自动推进工单阶段的锚点(见分支命名节)。
+   - **在此基础上,若本会话已绑定该工单(开场用 `bios_bind_session` 拿到了 issue_key)**,每个阶段结束时额外显式调用 `bios_update_stage(issue_key, stage)` 报告 stage(`plan_assign` | `execute` | `verify` | `close` 四阶段):需求/计划阶段定稿、准备开发 → `execute`(计划刚出、还没进开发可先报 `plan_assign`);开发进行中/开完实现 PR → `execute`,进入等待评审 → `verify`;PR 合入 main / 任务完成(如"PR #187 已合入 main")→ `close`,并调 `bios_report_progress(issue_key, note)` 补一句精炼的完成摘要。
+   - 这是补 GitHub 事件覆盖不到的阶段(尤其非编码工作,如纯讨论、纯测试)的事实信号,BIOS 侧仲裁里 `source=mcp` 权威,**不代替**上面的 PR 节奏,是额外一步。
+   - **前提**:仅当已绑定(拿到了 issue_key)才调;没绑定 / 工具不可用 → 跳过,不阻塞开发,不要报错卡住。
+   - 没有工单号 / 未接入 BIOS → 按原节奏走,不强制拆 PR,也不用调这些工具。
 
 ## 给 triage agent 的工作约定
 - 错误来源：可观测后端（[按项目填：Datadog / Grafana + Prometheus / CloudWatch 等]）+ 错误追踪（[Sentry / Rollbar 等]）。

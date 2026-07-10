@@ -41,8 +41,9 @@
 
 ## 8. BIOS 工单与阶段 PR(可选,接入 BIOS 的项目可用)
 - 本任务关联的 BIOS 工单号:<!-- 如 TES-42;会话开场若用户给了任务 id,应已用 bios_bind_session 绑定;没有工单号就留空,不影响交付 -->
-- 有工单号时,分阶段各自出 PR,别攒到最后一次性交:这份方案定稿 → **计划 PR**(落地本文档,推进工单到 plan_assign);实现完成 → **实现 PR**;补测试/修 bug → **测试/修复 PR**。分支名/PR 标题带工单号(`<type>/<service>/<KEY>-<slug>`)是 GitHub 事件自动推进工单阶段的锚点,不用手动汇报。
-- 没有工单号 → 按原节奏交付,不强制补建。
+- 有工单号时,分阶段各自出 PR,别攒到最后一次性交:这份方案定稿 → **计划 PR**(落地本文档,推进工单到 plan_assign);实现完成 → **实现 PR**;补测试/修 bug → **测试/修复 PR**。分支名/PR 标题带工单号(`<type>/<service>/<KEY>-<slug>`)是 GitHub 事件自动推进工单阶段的锚点。
+- **每个阶段结束时,若本会话已绑定该工单(有 issue_key),额外显式调用 `bios_update_stage(issue_key, stage)` 报告 stage**(`plan_assign` | `execute` | `verify` | `close` 四阶段):方案定稿/开计划 PR → `plan_assign`(若紧接着就进入开发可直接报 `execute`);开发中/开实现 PR → `execute`;测试补齐待评审 → `verify`;PR 合入 main / 任务完成 → `close`,并调 `bios_report_progress(issue_key, note)` 补一句精炼的完成摘要(如"PR #187 已合入 main")。这是补 GitHub 事件覆盖不到的阶段(尤其非编码工作)的事实信号,不代替上面的 PR 节奏。未绑定 / 工具不可用 → 跳过,不阻塞交付。
+- 没有工单号 → 按原节奏交付,不强制补建,也不用调 stage 工具。
 
 ---
 
@@ -51,4 +52,4 @@
 > ②实现代码并生成对应测试;③确保 `make test-integration` 通过;
 > ④把功能包在指定的特性开关后;⑤开 PR,PR 描述里列出你做了哪些权衡、
 > 哪些地方需要人类评审者重点看战略风险。**不要扩大范围;遇到第 3 节之外的需求先问我。**
-> ⑥若第 8 节填了工单号,分阶段各自开 PR(计划/实现/测试),分支名带工单号,让 GitHub 事件自动推进阶段。
+> ⑥若第 8 节填了工单号,分阶段各自开 PR(计划/实现/测试),分支名带工单号,让 GitHub 事件自动推进阶段;若会话已绑定该工单,阶段末还需显式调 `bios_update_stage`/`bios_report_progress` 报 stage 与进度。
