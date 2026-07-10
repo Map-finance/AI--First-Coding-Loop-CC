@@ -44,6 +44,10 @@ PR 描述自动带 pre-submit checklist(见 `.github/pull_request_template.md`)�
 1. **读 `graphify-out/GRAPH_REPORT.md`**（若存在）— 了解 god nodes、服务社区、意外依赖（~2-5k token，读一次）
 2. **读本文件** — 确认当前技术栈和命令
 3. **按需读 skill** — 根据任务类型，参考下方"规范 skill 强制加载"表
+4. **BIOS 任务绑定（可选,新对话/新任务开场时问一次)**——主动问用户一句:"这次任务关联哪个 BIOS 工单号?(没有可跳过)"。
+   - 用户给了工单号(如 `TES-42`)→ 调用 BIOS MCP 工具 `bios_bind_session`(`issue_key`=用户给的工单号,`session_id`=当前会话 id),把本会话绑定到该工单。绑定后本会话的对话与进度会自动挂到该工单,不用再手动汇报。
+   - 用户没给 / 跳过 → 直接开始,不阻塞开发。
+   - 可用工具列表里没有 `bios_bind_session`(daemon 未运行,或项目未接入 BIOS)→ 同样跳过,不要报错卡住。
 
 <!-- @VARIANT:local-dev -->
 
@@ -96,6 +100,7 @@ gh release create <tag> --target main \
 <!-- @VARIANT:work-rule-6 -->
 7. **响应评审要批量提交**:修复 PR 评审意见时,**批量修完所有点 + 本地自检通过,再一次性 commit & push**。禁止每修一处就 push——四趟评审跑在每次 push(`synchronize`)上,碎推会频繁重跑评审、刷屏评论、浪费 Actions 配额。改完一批再推一次。
 8. **开 PR 前先本地 code review**:跑 `ai_review.py` 四趟(配本地 LLM key)或 `/code-review` 审本分支 diff,BLOCK 项先改再开 PR——省一轮 CI 往返。本地代码评审用 `verifier-*` 那套评审,**不是** `checker`(两者区别见下方 Sub-agents 说明)。
+9. **有 BIOS 工单号时,阶段各自出 PR(可选,别攒到最后一次性交)**:需求/方案讨论定稿 → 开一个**计划 PR**(落地方案文档,分支/标题带工单号,如 `docs/plan/<KEY>-slug`,把工单推进到 plan_assign);开发完成 → 开**实现 PR**(`feat/<service>/<KEY>-slug`);测试补齐或修 bug → 开**测试/修复 PR**(`fix/<service>/<KEY>-slug`)。分支名/PR 标题带工单号是 GitHub 事件自动推进工单阶段的锚点(见分支命名节),照常**不用手动汇报进度**。没有工单号 / 未接入 BIOS → 按原节奏走,不强制拆 PR。
 
 ## 给 triage agent 的工作约定
 - 错误来源：可观测后端（[按项目填：Datadog / Grafana + Prometheus / CloudWatch 等]）+ 错误追踪（[Sentry / Rollbar 等]）。
