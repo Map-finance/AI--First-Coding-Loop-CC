@@ -43,7 +43,7 @@
 - 本任务关联的 BIOS 工单号:<!-- 如 TES-42;会话开场若用户给了任务 id,应已用 bios_bind_session 绑定;没有工单号就留空,不影响交付 -->
 - 有工单号时,分阶段各自出 PR,别攒到最后一次性交:这份方案定稿 → **计划 PR**(落地本文档,推进工单到 plan_assign);实现完成 → **实现 PR**;补测试/修 bug → **测试/修复 PR**。分支名/PR 标题带工单号(`<type>/<service>/<KEY>-<slug>`)是 GitHub 事件自动推进工单阶段的锚点。
 - **每个阶段结束时,若本会话已绑定该工单(有 issue_key),额外显式调用 `bios_update_stage(issue_key, stage)` 报告 stage**(`plan_assign` | `execute` | `verify` | `close` 四阶段):方案定稿/开计划 PR → `plan_assign`(若紧接着就进入开发可直接报 `execute`);开发中/开实现 PR → `execute`;测试补齐待评审 → `verify`;PR 合入 main / 任务完成 → `close`,并调 `bios_report_progress(issue_key, note)` 补一句精炼的完成摘要(如"PR #187 已合入 main")。这是补 GitHub 事件覆盖不到的阶段(尤其非编码工作)的事实信号,不代替上面的 PR 节奏。未绑定 / 工具不可用 → 跳过,不阻塞交付。
-- 没有工单号 → 按原节奏交付,不强制补建,也不用调 stage 工具。
+- **没有工单号,且 bios 工具可用 → 方案/scope 定稿后主动用 `bios_create_issue` 建一张任务**(标题 + 一句摘要 + 类型),再同上逐阶段 `bios_update_stage` 更新到 close。**建一张、贯穿更新,不是每阶段各建一张**;这是 harness 的活,daemon 会话分析只是兜底,且会 defer 到你建的这张单(不会重复)。工具不可用 / daemon 没跑 → 跳过,由 daemon 兜底。
 
 ---
 
