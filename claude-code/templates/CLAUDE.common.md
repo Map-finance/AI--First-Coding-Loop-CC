@@ -104,7 +104,7 @@ gh release create <tag> --target main \
    - **在此基础上,若本会话已绑定该工单(开场用 `bios_bind_session` 拿到了 issue_key)**,每个阶段结束时额外显式调用 `bios_update_stage(issue_key, stage)` 报告 stage(`plan_assign` | `execute` | `verify` | `close` 四阶段):需求/计划阶段定稿、准备开发 → `execute`(计划刚出、还没进开发可先报 `plan_assign`);开发进行中/开完实现 PR → `execute`,进入等待评审 → `verify`;PR 合入 main / 任务完成(如"PR #187 已合入 main")→ `close`,并调 `bios_report_progress(issue_key, note)` 补一句精炼的完成摘要。
    - 这是补 GitHub 事件覆盖不到的阶段(尤其非编码工作,如纯讨论、纯测试)的事实信号,BIOS 侧仲裁里 `source=mcp` 权威,**不代替**上面的 PR 节奏,是额外一步。
    - **前提**:仅当已绑定(拿到了 issue_key)才调;没绑定 / 工具不可用 → 跳过,不阻塞开发,不要报错卡住。
-   - **没有工单号但接入了 BIOS → 方案/scope 定稿后主动建一张任务(统一建单:MCP 主 + CLI 兜底)**:`bios_create_issue`(MCP)优先,没接入 bios 工具时用 CLI `deepdog issue create`。**建一张、贯穿更新,不是每阶段各建一张**;daemon 会话分析只是兜底且 defer 到你建的这张单(不重复)。scope 明确了再建。**负责人默认你自己**(服务端已对 agent 建的单自动指派创建者;若未指派就 `deepdog issue assign <KEY> --to <你自己>` 补)。**每阶段 PR 带工单号 → 每个都自动关联到任务(多个、GitHub 事件去重)。**
+   - **没有工单号但接入了 BIOS → 方案/scope 定稿后主动建一张任务(统一建单:MCP 主 + CLI 兜底)**:`bios_create_issue`(MCP)优先,没接入 bios 工具时用 CLI `deepdog issue create`。**建一张、贯穿更新,不是每阶段各建一张**;daemon 会话分析只是兜底且 defer 到你建的这张单(不重复)。scope 明确了再建。**负责人默认你自己**(服务端已对 agent 建的单自动指派创建者;若未指派就 `deepdog issue assign <KEY> --to <你自己>` 补)。**每阶段 PR 带工单号;开 PR 时用 `bios_link_pull_request(issue_key, url)`(CLI 兜底 `deepdog issue link-pr <KEY> --url`)显式关联到任务** —— webhook 无关、幂等,这才是 PR 挂上任务的保证;GitHub 事件自动关联只在装了 App 时是加成,别单靠它(多个 PR 会去重)。
    - 未接入 BIOS / 工具不可用 / daemon 没跑 → 按原节奏走,不强制拆 PR,由 daemon 兜底。
 
 ## 给 triage agent 的工作约定
